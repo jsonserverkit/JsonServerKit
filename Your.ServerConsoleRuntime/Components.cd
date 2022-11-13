@@ -1,125 +1,109 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
   <Class Name="JsonServerKit.AppServer.Data.Crud.Create&lt;T&gt;" Collapsed="true">
-    <Position X="4.75" Y="3.25" Width="1.5" />
+    <Position X="5.75" Y="2.75" Width="1.5" />
     <TypeIdentifier />
   </Class>
   <Class Name="JsonServerKit.AppServer.Data.Crud.Delete&lt;T&gt;" Collapsed="true">
-    <Position X="8.25" Y="3.25" Width="1.5" />
+    <Position X="5.75" Y="5" Width="1.5" />
     <TypeIdentifier />
   </Class>
   <Class Name="JsonServerKit.AppServer.Data.Crud.Read&lt;T&gt;" Collapsed="true">
-    <Position X="6.5" Y="5.25" Width="1.5" />
+    <Position X="5.75" Y="3.5" Width="1.5" />
     <TypeIdentifier />
   </Class>
   <Class Name="JsonServerKit.AppServer.Data.Crud.Update&lt;T&gt;" Collapsed="true">
-    <Position X="3" Y="7.25" Width="1.5" />
+    <Position X="5.75" Y="4.25" Width="1.5" />
     <TypeIdentifier />
   </Class>
-  <Class Name="JsonServerKit.AppServer.Data.MessageContext" Collapsed="true">
-    <Position X="3" Y="4.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.Data.MessageContext">
+    <Position X="1.5" Y="1.75" Width="1.5" />
     <TypeIdentifier />
   </Class>
-  <Class Name="JsonServerKit.AppServer.Data.Payload" Collapsed="true">
-    <Position X="10" Y="4.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.Data.Payload">
+    <Position X="3.5" Y="1.75" Width="1.5" />
     <TypeIdentifier />
   </Class>
-  <Class Name="JsonServerKit.AppServer.Data.PayloadInfo" Collapsed="true">
-    <Position X="3" Y="5.25" Width="1.5" />
-    <TypeIdentifier />
-  </Class>
-  <Class Name="JsonServerKit.AppServer.Data.ReceiveSendContext" Collapsed="true">
-    <Position X="8.25" Y="5.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.Data.PayloadInfo">
+    <Position X="3.5" Y="3.75" Width="1.5" />
     <TypeIdentifier />
   </Class>
   <Class Name="JsonServerKit.AppServer.Data.SessionInfo" Collapsed="true">
-    <Position X="4.75" Y="6.25" Width="1.5" />
+    <Position X="1.5" Y="4.5" Width="1.5" />
     <TypeIdentifier />
   </Class>
   <Class Name="JsonServerKit.AppServer.Data.SessionRequest" Collapsed="true">
-    <Position X="6.5" Y="6.25" Width="1.5" />
+    <Position X="1.5" Y="3.75" Width="1.5" />
     <TypeIdentifier />
   </Class>
-  <Class Name="JsonServerKit.AppServer.LogTemplate.Messages" Collapsed="true">
-    <Position X="6.5" Y="4.25" Width="1.5" />
-    <TypeIdentifier />
-  </Class>
-  <Class Name="JsonServerKit.AppServer.Operations.CrudOperation&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="6.5" Y="3.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.Operations.CrudOperation&lt;T&gt;" BaseTypeListCollapsed="true">
+    <Position X="12.5" Y="3.75" Width="2.25" />
     <TypeIdentifier />
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="JsonServerKit.AppServer.Operations.Operation&lt;T&gt;" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="8.25" Y="4.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.Operations.Operation&lt;T&gt;" BaseTypeListCollapsed="true">
+    <Position X="12.5" Y="1.75" Width="2.5" />
     <TypeIdentifier />
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="JsonServerKit.AppServer.CertificateHandling" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="3" Y="3.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.CertificateHandling" BaseTypeListCollapsed="true">
+    <Position X="1.5" Y="8.75" Width="2.75" />
     <TypeIdentifier />
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="JsonServerKit.AppServer.HostConfiguration" Collapsed="true">
-    <Position X="10" Y="3.25" Width="1.5" />
-    <TypeIdentifier />
-  </Class>
-  <Class Name="JsonServerKit.AppServer.MessageProcessor" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="4.75" Y="4.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.MessageProcessor" BaseTypeListCollapsed="true">
+    <Position X="4.75" Y="8.75" Width="2.5" />
     <TypeIdentifier />
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="JsonServerKit.AppServer.Protocol" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="4.75" Y="5.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.Protocol" BaseTypeListCollapsed="true">
+    <Position X="7.75" Y="8.75" Width="1.5" />
     <TypeIdentifier />
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Class Name="JsonServerKit.AppServer.Runtime" Collapsed="true">
-    <Position X="10" Y="5.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.Runtime">
+    <Position X="12.5" Y="6.25" Width="3" />
     <TypeIdentifier />
   </Class>
-  <Class Name="JsonServerKit.AppServer.SessionFactory" Collapsed="true">
-    <Position X="3" Y="6.25" Width="1.5" />
-    <TypeIdentifier />
-  </Class>
-  <Class Name="JsonServerKit.AppServer.TcpServer" Collapsed="true">
-    <Position X="8.25" Y="6.25" Width="1.5" />
-    <TypeIdentifier />
-  </Class>
-  <Class Name="JsonServerKit.AppServer.TcpSession" Collapsed="true" BaseTypeListCollapsed="true">
-    <Position X="10" Y="6.25" Width="1.5" />
+  <Class Name="JsonServerKit.AppServer.TcpSession" BaseTypeListCollapsed="true">
+    <Position X="9.75" Y="8.75" Width="2.25" />
     <TypeIdentifier />
     <Lollipop Position="0.2" Collapsed="true" />
   </Class>
-  <Interface Name="JsonServerKit.Logging.ILog">
-    <Position X="5.25" Y="1.25" Width="1.5" />
+  <Class Name="Your.Domain.BusinessObjects.Account" Collapsed="true">
+    <Position X="5.75" Y="1.75" Width="1.5" />
     <TypeIdentifier />
-  </Interface>
+  </Class>
+  <Class Name="Your.Domain.BusinessObjects.Order" Collapsed="true">
+    <Position X="7.5" Y="1.75" Width="1.5" />
+    <TypeIdentifier />
+  </Class>
   <Interface Name="JsonServerKit.AppServer.Interfaces.ICertificateHandling">
-    <Position X="1.75" Y="8.5" Width="2.5" />
+    <Position X="1.75" Y="6.25" Width="2.5" />
     <TypeIdentifier />
   </Interface>
   <Interface Name="JsonServerKit.AppServer.Interfaces.IMessageProcessor">
-    <Position X="5" Y="8.5" Width="2.25" />
+    <Position X="5" Y="6.25" Width="2.25" />
     <TypeIdentifier />
   </Interface>
   <Interface Name="JsonServerKit.AppServer.Interfaces.IProtocol">
-    <Position X="7.5" Y="8.5" Width="1.5" />
+    <Position X="7.75" Y="6.25" Width="1.5" />
     <TypeIdentifier />
   </Interface>
   <Interface Name="JsonServerKit.AppServer.Interfaces.ITcpServerConfig">
-    <Position X="9.25" Y="8.5" Width="2" />
+    <Position X="12.75" Y="8.5" Width="2" />
     <TypeIdentifier />
   </Interface>
   <Interface Name="JsonServerKit.AppServer.Interfaces.ITcpSession">
-    <Position X="11.75" Y="8.5" Width="2" />
+    <Position X="9.75" Y="6.25" Width="2" />
     <TypeIdentifier />
   </Interface>
   <Interface Name="JsonServerKit.AppServer.Operations.ICrudOperation&lt;T, TCreate, TRead, TUpdate, TDelete&gt;" Collapsed="true">
-    <Position X="0.5" Y="4.5" Width="1.5" />
+    <Position X="8" Y="3.75" Width="3.75" />
     <TypeIdentifier />
   </Interface>
-  <Interface Name="JsonServerKit.AppServer.Operations.IOperation" Collapsed="true">
-    <Position X="0.5" Y="3.25" Width="1.5" />
+  <Interface Name="JsonServerKit.AppServer.Operations.IOperation">
+    <Position X="10.25" Y="1.75" Width="1.5" />
     <TypeIdentifier />
   </Interface>
   <Font Name="Segoe UI" Size="9" />
