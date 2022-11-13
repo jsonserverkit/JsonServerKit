@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Your.BusinessLogic</RootNamespace>
+    <AssemblyName>Your.BusinessLogic</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Your.Domain\Your.Domain.csproj" />
+    <ProjectReference Include="..\JsonServerKit.AppServer\JsonServerKit.AppServer.csproj" />
+  </ItemGroup>
+
+</Project>

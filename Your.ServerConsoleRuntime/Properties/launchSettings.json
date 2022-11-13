@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "distributionName": ""
+    },
+    "ConsoleRuntime": {
+      "commandName": "Executable",
+      "executablePath": "D:\\Source\\simple\\ConsoleRuntime\\bin\\Debug\\net6.0\\ConsoleRuntime.exe"
+    }
+  }
+}

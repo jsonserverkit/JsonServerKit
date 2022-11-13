@@ -1,0 +1,9 @@
+﻿namespace JsonServerKit.AppServer.Data
+{
+    public class ReceiveSendContext
+    {
+        public MessageContext? Context { get; set; }
+        public string Message { get; set; }
+
+    }
+}
