@@ -45,3 +45,10 @@ The JsonServerKit components have the following dependencies.
 |  | Serilog.Enrichers.Thread |
 |  | Serilog.Settings.Configuration |
 |  | Serilog.Sinks.RollingFile |
+
+### Interfaces in application context
+The following dependency diagram shows how the interfaces provided by JsonServerKit might be used in a project setup.
+![image](https://user-images.githubusercontent.com/118096766/201525855-e819c239-024e-4b14-ba6c-c8b10c35e1f1.png)
+
+
+
