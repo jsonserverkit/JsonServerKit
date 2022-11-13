@@ -1,19 +1,21 @@
 ## JsonServerKit
 The project contains a C# .Net 6.0 software kit used to build/run an application server based on Tcp/Ip communication. 
-The server supports SSL Security. The JsonServerKit currently consists of two components.
+The server supports SSL security. Data is transfered in JSON format. The JsonServerKit currently consists of two components.
 
-| Component | Descirption |
+| Component | Description |
 | ------------- | ------------- |
 | JsonServerKit.AppServer | Contains the application server |
 | JsonServerKit.Logging | Contains a wrapper around the Serilog logger component |
 
 The application server component uses a set of patterns/interface that provides abstraction to enable best possible intergration to projects.
 The JsonServerKit can be uesd to implement business logic based on an individual domain model.
+The applicaton server supports domain object to be processed using a IOperation based pattern and/or a CRUD based IOperaton pattern.
+The domain data is transfered using Json serialization/deserialization.     
 
 ### Application scenario
 The following set of components shows a possible project setup. 
 
-| Component | Descirption |
+| Component | Description |
 | ------------- | ------------- |
 | JsonServerKit.AppServer | Contains the application server |
 | JsonServerKit.Logging | Contains a wrapper around the Serilog logger component |
@@ -26,3 +28,20 @@ The following set of components shows a possible project setup.
 
 ### Dependency Graph using JsonServerKit as an application server with clients
 ![image](https://user-images.githubusercontent.com/118096766/201517285-6f903ac9-481c-481c-a2e2-95e05a9226d4.png)
+
+### Dependencies of JsonServerKit
+The JsonServerKit components have the following dependencies.
+
+| Component | Dependency |
+| ------------- | ------------- |
+| JsonServerKit.AppServer | Microsoft.Extensions.Hosting |
+|  | Newtonsoft.Json |
+|  | Serilog |
+|  | System.Threading.Tasks.Dataflow |
+| JsonServerKit.Logging | Microsoft.Extensions.Hosting |
+|  | Serilog |
+|  | Serilog.Enrichers.Environment |
+|  | Serilog.Enrichers.Process |
+|  | Serilog.Enrichers.Thread |
+|  | Serilog.Settings.Configuration |
+|  | Serilog.Sinks.RollingFile |
