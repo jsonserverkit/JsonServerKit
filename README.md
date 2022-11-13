@@ -1,6 +1,6 @@
 ## JsonServerKit
-The project contains a C# .Net 6.0 software kit used to build/run an application server based on Tcp/Ip communication. 
-The server supports SSL security. Data is transfered in JSON format. The JsonServerKit currently consists of two components.
+The project is a C# .Net 6.0 software kit used to build (and run) an application server based on TCP/IP communication. 
+The server supports SSL security. Data is transfered in JSON format. JsonServerKit currently consists of two components.
 
 | Component | Description |
 | ------------- | ------------- |
@@ -9,7 +9,7 @@ The server supports SSL security. Data is transfered in JSON format. The JsonSer
 
 The application server component uses a set of patterns/interface that provides abstraction to enable best possible intergration to projects.
 The JsonServerKit can be uesd to implement business logic based on an individual domain model.
-The applicaton server supports domain object to be processed using a IOperation based pattern and/or a CRUD based IOperaton pattern.
+The applicaton server supports domain object to be processed using a IOperation based pattern and/or a CRUD based IOperation pattern.
 The domain data is transfered using Json serialization/deserialization.     
 
 ### Application scenario
@@ -50,5 +50,8 @@ The JsonServerKit components have the following dependencies.
 The following dependency diagram shows how the interfaces provided by JsonServerKit might be used in a project setup.
 ![image](https://user-images.githubusercontent.com/118096766/201525855-e819c239-024e-4b14-ba6c-c8b10c35e1f1.png)
 
-
-
+### JsonServerKit 
+- **IS NOT** designed to be a REST API.
+- **DOES NOT** provide certificate/s for the destination hosting environment.
+- **DOES NOT** provide hosting facilities (Docker) for the destination environment.
+- **DOES NOT** provide code genaration tool/s to generate ICrudOperation based implementations.
