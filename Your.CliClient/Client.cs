@@ -71,7 +71,7 @@ namespace JsonServerKit.CliClient
             {
                 // Get client certificate from store.
                 var clientCert = CertificateHandling.GetCertificateFromStore(tcpServerConfig.CertificateThumbprint, StoreLocation.CurrentUser);
-                sslStream.AuthenticateAsClient(machineName, new X509Certificate2Collection(clientCert), SslProtocols.Tls13, false);
+                sslStream.AuthenticateAsClient(machineName, new X509Certificate2Collection(clientCert), SslProtocols.Tls13, true);
             }
             catch (AuthenticationException e)
             {

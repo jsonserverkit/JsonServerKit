@@ -73,7 +73,7 @@ namespace JsonServerKit.AppServer
 
         #region Interface methods
 
-        public async Task<bool> AuthenticateServerAsync(CancellationToken stoppingToken)
+        public async Task<bool> AuthenticateServerAsync(bool doRequireClientAuthentication, bool checkCertificateRevocation, CancellationToken stoppingToken)
         {
             try
             {
@@ -86,7 +86,7 @@ namespace JsonServerKit.AppServer
                     throw new ArgumentNullException(nameof(_x509Certificate2));
 
                 // Authenticate the server and do require the client to authenticate (optionally the client could be defined to not authenticate).
-                await _sslStream.AuthenticateAsServerAsync(_x509Certificate2, clientCertificateRequired: true, SslProtocols.Tls13, checkCertificateRevocation: true);
+                await _sslStream.AuthenticateAsServerAsync(_x509Certificate2, clientCertificateRequired: doRequireClientAuthentication, SslProtocols.Tls13, checkCertificateRevocation: checkCertificateRevocation);
                 DisplayStreamSecuritySettings(_sslStream);
 
                 return true;
