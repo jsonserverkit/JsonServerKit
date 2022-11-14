@@ -1,3 +1,4 @@
-﻿using JsonServerKit.CliClient;
+﻿using Your.CliClient;
 
-new Client().RunClient("localhost");
+Client.RunClient();
+

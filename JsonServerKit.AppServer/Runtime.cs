@@ -1,4 +1,5 @@
 ﻿using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using JsonServerKit.AppServer.Interfaces;
 using JsonServerKit.AppServer.Operations;
@@ -75,14 +76,16 @@ namespace JsonServerKit.AppServer
 
         public async Task Run(string[] args)
         {
-            // Define the cancellation token.
-            CancellationTokenSource? source = null;
+            CancellationTokenSource cancellationSource = new CancellationTokenSource();
+            await Run(args, cancellationSource);
+        }
 
+        public async Task Run(string[] args, CancellationTokenSource cancellationSource)
+        {
             try
             {
                 // Cancelation objects.
-                source = new CancellationTokenSource();
-                var token = source.Token;
+                var token = cancellationSource.Token;
 
                 // Host Builder erstellen.
                 var hostBuilder = HostConfiguration.CreateHostBuilder(args);
@@ -119,7 +122,7 @@ namespace JsonServerKit.AppServer
                     .ConfigureServices((hc,services) =>
                     {
                         var messageProcessor = new MessageProcessor();
-                        // Configure domain handler.
+                        // Configure domain object handler.
                         messageProcessor.ConfigureDomainObjectHandlers(_domainObjectHandlers); 
                         services.AddSingleton<IMessageProcessor>(messageProcessor);
                     })
@@ -145,7 +148,7 @@ namespace JsonServerKit.AppServer
             finally
             {
                 Log.CloseAndFlush();
-                source?.Dispose();
+                cancellationSource.Dispose();
             }
         }
 

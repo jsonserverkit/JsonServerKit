@@ -1,4 +1,5 @@
-﻿using System.Net.Security;
+﻿using System.Data;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
@@ -12,6 +13,19 @@ using Serilog;
 
 namespace JsonServerKit.AppServer
 {
+    /// <summary>
+    /// TLS/SSL (and .NET Framework 4.0)
+    /// https://www.red-gate.com/simple-talk/development/dotnet-development/tlsssl-and-net-framework-4-0/
+    /// Level of thread safety
+    /// https://stackoverflow.com/questions/7969903/what-level-of-thread-safety-can-i-expect-from-system-net-security-sslstream
+    /// APM (Asynchronous Programming Model) vs. TPL (Task Parallel Library) vs TAP (Task Asynchronous Programming-model)   
+    /// https://stackoverflow.com/questions/73359085/how-to-read-continuously-and-asynchronously-from-network-stream-using-abstract-s
+    /// APM
+    /// https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/async/
+    /// TPL (und Workflow)
+    /// https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/tpl-and-traditional-async-programming
+    /// https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/how-to-implement-a-producer-consumer-dataflow-pattern
+    /// </summary>
     public class TcpSession : ITcpSession
     {
         #region Private members
@@ -25,8 +39,6 @@ namespace JsonServerKit.AppServer
         private Task _receiver = null;
         private Task _sender = null;
         private BufferBlock<ReceiveSendContext> _blockingBuffer = new();
-        private readonly Dictionary<int, SessionInfo> _sessions = new();
-
 
         #region Messages
 
@@ -41,9 +53,13 @@ namespace JsonServerKit.AppServer
         private readonly string _msgBusinessObject = "Business object:";
         private readonly string _msgResponseData = "Response data:";
         private readonly string _msgCloseSessionOnRequest = "Closing connection on session close request.";
-        private readonly string _msgCloseOnNotSupportedMessage = "Closing connection on unknown message.";
         // Errors
+        // Message not supported.
         private readonly string _msgErrorMessageNotSupported = "Message is not supported!";
+        private readonly string _msgErrorCloseOnNotSupportedMessage = "Closing connection on unknown message.";
+        // Exception occurred.
+        private readonly string _msgErrorException = "This is not supported!";
+        private readonly string _msgErrorCloseOnException = "Closing connection.";
 
         #endregion
 
@@ -51,6 +67,9 @@ namespace JsonServerKit.AppServer
 
         private readonly JsonSerializerSettings _jsonReceiveSerializerSettings = new() { TypeNameHandling = TypeNameHandling.Auto, StringEscapeHandling = StringEscapeHandling.Default };
         private readonly JsonSerializerSettings _jsonSendSerializerSettings = new() { TypeNameHandling = TypeNameHandling.All, StringEscapeHandling = StringEscapeHandling.Default };
+        //private readonly string _endOfMessage = Environment.NewLine;
+        private readonly string _endOfMessage = "\n\r";
+
 
         #endregion
 
@@ -73,7 +92,7 @@ namespace JsonServerKit.AppServer
 
         #region Interface methods
 
-        public async Task<bool> AuthenticateServerAsync(CancellationToken stoppingToken)
+        public async Task<bool> AuthenticateServerAsync(bool doRequireClientAuthentication, bool checkCertificateRevocation, CancellationToken stoppingToken)
         {
             try
             {
@@ -86,7 +105,7 @@ namespace JsonServerKit.AppServer
                     throw new ArgumentNullException(nameof(_x509Certificate2));
 
                 // Authenticate the server and do require the client to authenticate (optionally the client could be defined to not authenticate).
-                await _sslStream.AuthenticateAsServerAsync(_x509Certificate2, clientCertificateRequired: true, SslProtocols.Tls13, checkCertificateRevocation: true);
+                await _sslStream.AuthenticateAsServerAsync(_x509Certificate2, clientCertificateRequired: doRequireClientAuthentication, SslProtocols.Tls13, checkCertificateRevocation: checkCertificateRevocation);
                 DisplayStreamSecuritySettings(_sslStream);
 
                 return true;
@@ -112,35 +131,47 @@ namespace JsonServerKit.AppServer
             var _sender = Task.Factory.StartNew(Sending, stoppingToken);
         }
 
-        public void HandleSessionRequest(dynamic incommingMsg, string msg, ReceiveSendContext receiveSendContext)
-        {
-            _logger.Information("{0} {1}", _msgMessageData, msg);
-            _logger.Information(_msgSessionStarted);
-            var newSessionInfo = CreateSession(incommingMsg.SessionName);
-            receiveSendContext.Message =
-                JsonConvert.SerializeObject(newSessionInfo, Formatting.None, _jsonSendSerializerSettings);
-        }
-
         public void HandlePayload(dynamic incommingMsg, string msg, ReceiveSendContext receiveSendContext)
         {
-            var msgId = ((MessageContext)incommingMsg.Context)?.MessageId;
+            if (incommingMsg is not Payload payload)
+                throw new InvalidCastException(nameof(incommingMsg));
+
+            // Payload with Context null means close connection.
+            if (payload.Context == null)
+                throw new ArgumentNullException(nameof(payload.Context));
+
+            var msgId = payload.Context.MessageId;
             _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgMessageData, msg);
-            _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgBusinessObject, incommingMsg.Message.GetType());
+            _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgBusinessObject, payload?.Message?.GetType());
+      
+            // Payload with Message null means connection.
+            if (payload.Message == null)
+                throw new ArgumentNullException(nameof(payload.Message));
+
             _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, msgId, _msgStartProcessing);
-            var payloadInfo = _messageProcessor.ProcessMessage(incommingMsg.Message, incommingMsg.Context, _logger);
+            var payloadInfo = _messageProcessor.ProcessMessage(payload.Message, payload.Context, _logger);
+        
+            // Assure a return PayloadInfo exists.
             if (payloadInfo == null)
-                payloadInfo = new PayloadInfo { Context = incommingMsg.Context };
-            receiveSendContext.Context = (MessageContext)payloadInfo.Context;
-            receiveSendContext.Message = JsonConvert.SerializeObject(payloadInfo, Formatting.None, _jsonSendSerializerSettings);
+                payloadInfo = new PayloadInfo { Context = payload.Context };
+            
+            // Assure a MessageContext is returned.
+            if (payloadInfo.Context == null)
+                payloadInfo.Context = payload.Context;
+
+            receiveSendContext.Context = payloadInfo.Context;
+            receiveSendContext.OutputMessage = JsonConvert.SerializeObject(payloadInfo, Formatting.None, _jsonSendSerializerSettings);
         }
 
         public bool HandleSessionInfo(dynamic incommingMsg, string msg)
         {
+            if (incommingMsg is not SessionInfo sessionInfo)
+                throw new InvalidCastException(nameof(incommingMsg));
+
             _logger.Information("{0} {1}", _msgMessageData, msg);
-            if (incommingMsg.CloseNow)
+            if (sessionInfo.CloseNow)
             {
                 _logger.Information(_msgCloseSessionOnRequest);
-                RemoveSession(incommingMsg.Id);
                 return true;
             }
 
@@ -149,19 +180,11 @@ namespace JsonServerKit.AppServer
 
         #endregion
 
-        #region Private methods - Network communication
+        #region Private methods - Network communication - Receiving
 
         /// <summary>
         /// Read the message sent by the client.
         /// Post it to a buffer to be sent by the sending thread.
-        ///
-        /// APM (Asynchronous Programming Model) vs. TPL (Task Parallel Library) vs TAP (Task Asynchronous Programming-model)   
-        /// https://stackoverflow.com/questions/73359085/how-to-read-continuously-and-asynchronously-from-network-stream-using-abstract-s
-        /// APM
-        /// https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/async/
-        /// TPL (und Workflow)
-        /// https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/tpl-and-traditional-async-programming
-        /// https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/how-to-implement-a-producer-consumer-dataflow-pattern
         /// </summary>
         private void Receiving()
         {
@@ -170,57 +193,26 @@ namespace JsonServerKit.AppServer
                 _logger.Information(_msgStartReceiving);
                 do
                 {
-                    // Read a message from the client.
-                    var msg = _protocol.ReadMessage(_sslStream);
-                    var receiveSendContext = new ReceiveSendContext();
+                    // Read a message/s from the client.
+                    var receiveSendContext = ReadMessage();
 
-                    try
+                    var close = false;
+                    foreach (var message in receiveSendContext.InputMessages)
                     {
-                        // Deserialize incomming message as dynamic.
-                        var incommingMsg = JsonConvert.DeserializeObject<dynamic>(msg, _jsonReceiveSerializerSettings);
-                        _logger.Information("{0} {1}", _msgMessageReceived, incommingMsg?.GetType());
-
-                        var close = false;
-                        switch (incommingMsg)
+                        if (!ProcessMessage(message, receiveSendContext))
                         {
-                            case SessionRequest:
-                            {
-                                HandleSessionRequest(incommingMsg, msg, receiveSendContext);
-                                break;
-                            }
-                            case Payload:
-                            {
-                                HandlePayload(incommingMsg, msg, receiveSendContext);
-                                break;
-                            }
-                            case SessionInfo:
-                                close = HandleSessionInfo(incommingMsg, msg);
-                                break;
-                            default:
-                                CloseOnUnknownMessage();
-                                close = true;
-                                break;
-                        }
-
-                        // Check if the connection will be closed.
-                        if (close)
+                            close = true;
                             break;
+                        }
                     }
-                    catch (Exception e)
-                    {
-                        _logger.Error(e.Message);
+
+                    if (close)
                         break;
-                    }
 
                     try
                     {
                         // Post the outgoing message to the buffer.
-                        if (receiveSendContext.Context != null)
-                            _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, receiveSendContext.Context.MessageId, _msgMessageResponseToBuffer);
-                        else
-                            _logger.Information( _msgMessageResponseToBuffer);
-                        var  x = (ITargetBlock<ReceiveSendContext>)_blockingBuffer;
-                        x.Post(receiveSendContext);
+                        PostResponseMessageToBuffer(receiveSendContext);
                     }
                     catch (Exception e)
                     {
@@ -243,11 +235,105 @@ namespace JsonServerKit.AppServer
             }
         }
 
+        private ReceiveSendContext ReadMessage()
+        {
+            var receiveSendContext = new ReceiveSendContext();
+            receiveSendContext.InputMessages = _protocol.ReadMessage(_sslStream);
+            return receiveSendContext;
+        }
+
+        private bool ProcessMessage(string msg, ReceiveSendContext receiveSendContext)
+        {
+            try
+            {
+                // Only if required. Feature: Make on/off available in config
+                //_logger.Information("{0} {1}", _msgMessageReceived, msg);
+
+                /*
+                // Wrap to JsonStreamReader?
+                // https://stackoverflow.com/questions/26601594/what-is-the-correct-way-to-use-json-net-to-parse-stream-of-json-objects
+                var copyMsg = (string)msg.Clone();
+                JsonTextReader reader = new JsonTextReader(new StringReader(copyMsg));
+                reader.SupportMultipleContent = true;
+
+                dynamic incommingMsg = null;
+                while (true)
+                {
+                    if (!reader.Read())
+                    {
+                        break;
+                    }
+
+                    // TypeNameHandling = TypeNameHandling.Auto, StringEscapeHandling = StringEscapeHandling.Default
+                    JsonSerializer serializer = new JsonSerializer();
+                    serializer.TypeNameHandling = TypeNameHandling.Auto;
+                    serializer.StringEscapeHandling = StringEscapeHandling.Default;
+                    serializer.NullValueHandling = NullValueHandling.Ignore;
+                    var multiMsgElement = serializer.Deserialize<dynamic>(reader);
+                    _logger.Information("Multimessgage Element: {0} {1}", _msgMessageReceived, multiMsgElement?.GetType());
+                    incommingMsg = multiMsgElement;
+                }
+                */
+                // Deserialize incomming message as dynamic.
+                var incommingMsg = JsonConvert.DeserializeObject<dynamic>(msg, _jsonReceiveSerializerSettings);
+                _logger.Information("{0} {1}", _msgMessageReceived, incommingMsg?.GetType());
+
+                var close = false;
+                switch (incommingMsg)
+                {
+                    case Payload:
+                    {
+                        HandlePayload(incommingMsg, msg, receiveSendContext);
+                        break;
+                    }
+                    case SessionInfo:
+                        close = HandleSessionInfo(incommingMsg, msg);
+                        break;
+                    default:
+                        CloseOnUnknownMessage();
+                        close = true;
+                        break;
+                }
+
+                // Check if the connection will be closed.
+                if (close)
+                    return false;
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e.Message);
+                CloseOnException();
+                return false;
+            }
+
+            return true;
+        }
+
+        private void PostResponseMessageToBuffer(ReceiveSendContext receiveSendContext)
+        {
+            if (receiveSendContext.Context != null)
+                _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, receiveSendContext.Context.MessageId, _msgMessageResponseToBuffer);
+            else
+                _logger.Information(_msgMessageResponseToBuffer);
+
+            var x = (ITargetBlock<ReceiveSendContext>)_blockingBuffer;
+            x.Post(receiveSendContext);
+        }
+
         private void CloseOnUnknownMessage()
         {
             _logger.Error(_msgErrorMessageNotSupported);
-            _logger.Information(_msgCloseOnNotSupportedMessage);
+            _logger.Error(_msgErrorCloseOnNotSupportedMessage);
         }
+        private void CloseOnException()
+        {
+            _logger.Error(_msgErrorException);
+            _logger.Error(_msgErrorCloseOnException);
+        }
+
+        #endregion
+
+        #region Private methods - Network communication - Sending
 
         private async Task Sending()
         {
@@ -259,48 +345,20 @@ namespace JsonServerKit.AppServer
             {
                 var receiveSendContext = await source.ReceiveAsync();
 
-                var messageBytes = Encoding.UTF8.GetBytes(new StringBuilder().AppendLine(receiveSendContext.Message).ToString());
+                var messageBytes = Encoding.UTF8.GetBytes(new StringBuilder().Append(receiveSendContext.OutputMessage).Append(_endOfMessage).ToString());
                 _sslStream.Write(messageBytes);
                 _sslStream.Flush();
 
                 if (receiveSendContext.Context != null)
                 {
-                    _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, receiveSendContext.Context.MessageId, _msgResponseData, receiveSendContext.Message);
+                    _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, receiveSendContext.Context.MessageId, _msgResponseData, receiveSendContext.OutputMessage);
                     _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, receiveSendContext.Context.MessageId, _msgMessageResponseSent);
                 }
                 else
                 {
-                    _logger.Information("{0} {1}", _msgResponseData, receiveSendContext.Message);
+                    _logger.Information("{0} {1}", _msgResponseData, receiveSendContext.OutputMessage);
                     _logger.Information(_msgMessageResponseSent);
                 }
-            }
-        }
-
-        #endregion
-
-        #region Private methods - Session handling
-
-        private SessionInfo CreateSession(string sessionName)
-        {
-            var sessionInfo = new SessionInfo
-            {
-                SessionName = sessionName,
-                ValidUntil = DateTime.Now.AddHours(1)
-            };
-            lock (_sessions)
-            {
-                sessionInfo.Id = _sessions.Count + 1;
-                _sessions.Add(sessionInfo.Id, sessionInfo);
-            }
-
-            return sessionInfo;
-        }
-
-        private void RemoveSession(int sessionId)
-        {
-            lock (_sessions)
-            {
-                _sessions.Remove(sessionId);
             }
         }
 

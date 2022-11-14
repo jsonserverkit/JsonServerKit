@@ -9,7 +9,7 @@
     },
     "ConsoleRuntime": {
       "commandName": "Executable",
-      "executablePath": "D:\\Source\\simple\\ConsoleRuntime\\bin\\Debug\\net6.0\\ConsoleRuntime.exe"
+      "executablePath": "D:\\Source\\JsonServerKit\\Your.ServerConsoleRuntime\\bin\\Debug\\net6.0\\Your.ServerConsoleRuntime.exe"
     }
   }
 }

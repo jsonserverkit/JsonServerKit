@@ -1,11 +1,13 @@
 ﻿namespace Your.Domain.BusinessObjects
 {
-    public class Order
+    public class Product
     {
         public long Id { get; set; }
-        public string OrderId { get; set; }
         public long ItemId { get; set; }
-        public int Count { get; set; }
+        public string ItemName { get; set; }
+        public string ItemDescription { get; set; }
+        public string ItemPicture { get; set; }
         public long Version { get; set; }
+
     }
 }

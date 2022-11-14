@@ -1,4 +1,5 @@
 ﻿using System.Net.Security;
+using System.Runtime.CompilerServices;
 using System.Text;
 using JsonServerKit.AppServer.Interfaces;
 using Serilog;
@@ -13,6 +14,11 @@ namespace JsonServerKit.AppServer
         #region Private members
 
         private readonly ILogger _logger;
+        private readonly StringBuilder _messageBuffer = new StringBuilder();
+        //private readonly string _endOfMessage = Environment.NewLine;
+        private readonly string _endOfMessage = "\n\r";
+        private string _currentMessage;
+
 
         #endregion
 
@@ -35,39 +41,54 @@ namespace JsonServerKit.AppServer
         /// Read a message from SslSteam.
         /// </summary>
         /// <param name="sslStream">SslStream object.</param>
-        /// <returns>Message as string.</returns>
-        public string ReadMessage(SslStream sslStream)
+        /// <returns>Message/s as string.</returns>
+        public string[] ReadMessage(SslStream sslStream)
         {
-            var buffer = new byte[2048];
-            var messageData = new StringBuilder();
+            var networkBuffer = new byte[2048];
             // ReSharper disable once RedundantAssignment
-            var bytes = -1;
+            var networkReadBytesCount = -1;
             do
             {
-                bytes = sslStream.Read(buffer, 0, buffer.Length);
-                //bytes = sslStream.ReadAsync(buffer, default(CancellationToken)).Result;
-                //sslStream.BeginRead()
+                networkReadBytesCount = sslStream.Read(networkBuffer, 0, networkBuffer.Length);
 
-
-                // Use Decoder class to convert from bytes to UTF8
-                // in case a character spans two buffers.
+                // Use Decoder class to convert from bytes to UTF8 in case a character spans two buffers.
                 var decoder = Encoding.UTF8.GetDecoder();
-                //var encoder = Encoding.UTF8.GetEncoder();
-                var chars = new char[decoder.GetCharCount(buffer, 0, bytes)];
-                decoder.GetChars(buffer, 0, bytes, chars, 0);
-                messageData.Append(chars);
-                // Check for EOF or an empty message.
-                if (messageData.ToString().IndexOf($"{Environment.NewLine}", StringComparison.CurrentCulture) != -1)
+                var chars = new char[decoder.GetCharCount(networkBuffer, 0, networkReadBytesCount)];
+                decoder.GetChars(networkBuffer, 0, networkReadBytesCount, chars, 0);
+                _messageBuffer.Append(chars);
+                // Check for first end of "message".
+                _currentMessage = _messageBuffer.ToString();
+                if (_currentMessage.IndexOf(_endOfMessage, StringComparison.CurrentCulture) != -1)
                 {
                     break;
                 }
-            } while (bytes != 0);
+            } while (networkReadBytesCount != 0);
 
-            // Replace this dumb/slow version with something faster.
-            var msgString = messageData.ToString();
-            return msgString.ReplaceLineEndings("");
+            // Bring the "wohle" messages to return, leave an additional new messages start in place.
+            var inputSplit = _currentMessage.Split(_endOfMessage);
+            string[] inputMessages = null;
+            if (inputSplit.Length > 1)
+            {
+                inputMessages = inputSplit.Take(inputSplit.Length - 1).ToArray();
+                _messageBuffer.Clear();
+                var ongoingMessage = inputSplit.Last();
+                if (!string.IsNullOrEmpty(ongoingMessage))
+                    _messageBuffer.Append(ongoingMessage);
+            }
+
+            return inputMessages;
         }
 
+        /// <summary>
+        /// Read a message from SslSteam.
+        /// Todo ooo https://github.com/smarkets/IronSmarkets/blob/master/IronSmarkets/Sockets/SafeSslStream.cs
+        /// </summary>
+        /// <param name="sslStream">SslStream object.</param>
+        /// <returns>Message as string.</returns>
+        public string ReadMessage(SslStream sslStream, ManualResetEvent run)
+        {
+            return null;
+        }
         #endregion
 
     }
