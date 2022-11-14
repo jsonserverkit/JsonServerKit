@@ -10,7 +10,6 @@ namespace JsonServerKit.Test
     [TestClass]
     public class TestSsl
     {
-        //SslTestContext _ctx;
         static readonly byte[] clientMessage = Encoding.ASCII.GetBytes("This is a message from the client");
         static readonly byte[] serverMessage = Encoding.ASCII.GetBytes("This is a message from the server");
 

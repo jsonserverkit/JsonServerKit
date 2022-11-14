@@ -35,6 +35,7 @@ runtime.ConfigureServices(new List<Action<IServiceCollection>>
 });
 
 // Configure the domain handlers.
+runtime.ConfigureDomainObjectHandler(typeof(Product), new ProductOperation());
 runtime.ConfigureDomainObjectHandler(typeof(Account), new AccountOperation());
 runtime.ConfigureDomainObjectCrudHandler(new[]{ typeof(Create<Account>) , typeof(Read<Account>) , typeof(Update<Account>) , typeof(Delete<Account>) }, new AccountCrudOperations());
 

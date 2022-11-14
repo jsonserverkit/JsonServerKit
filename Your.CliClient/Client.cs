@@ -1,6 +1,7 @@
-﻿using System.Diagnostics;
+﻿using System.Drawing;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Numerics;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -10,258 +11,337 @@ using JsonServerKit.AppServer.Data.Crud;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Your.Domain.BusinessObjects;
-using Log = JsonServerKit.Logging.Log;
 
-namespace JsonServerKit.CliClient
+namespace Your.CliClient
 {
-
-    /// <summary>
-    /// Some basic client functionality to communicate with "JsonServerKit.AppServer".
-    /// </summary>
     public class Client
     {
-        private readonly JsonSerializerSettings _jsonSendSerializerSettings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All, StringEscapeHandling = StringEscapeHandling.Default };
-        private readonly JsonSerializerSettings _jsonReceiveSerializerSettings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto, StringEscapeHandling = StringEscapeHandling.Default };
+        #region Static method to setup a test run.
 
-        // The following method is invoked by the RemoteCertificateValidationDelegate.
-        public bool ValidateServerCertificate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+        public static void RunClient()
         {
-            if (sslPolicyErrors == SslPolicyErrors.None)
-                return true;
+            var serverName = "localhost";
 
-            LogSink(string.Format("Certificate error: {0}", sslPolicyErrors));
-
-            // Do not allow this client to communicate with unauthenticated servers.
-            return false;
-        }
-
-        public void RunClient(string machineName)
-        {
             // Load appsettings file.
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
                 .Build();
 
-            var logConfig = new Log.LogConfig();
-            var logConfigSection = configuration.GetSection("LogConfig");
-            logConfigSection.Bind(logConfig);
-
-            // Logger
-            // Logging erstellen.
-            var pId = Process.GetCurrentProcess().Id;
-            logConfig.PathLogFileJsonFormated += $".Client.{pId}.{DateTime.Now:yyyy.MM.dd}.txt";
-            logConfig.PathLogFileTextFormated += $".Client.{pId}.{DateTime.Now:yyyy.MM.dd}.txt";
-            Serilog.Log.Logger = new Log(configuration, logConfig).GetLogger();
-            var protocol = new Protocol(Serilog.Log.Logger);
-            LogSink("Client Hello.");
-
-            // Create a TCP/IP client socket.
-            // machineName is the host running the server application.
             var tcpServerConfig = new TcpServer.TcpServerConfig();
             var tcpServerConfigSection = configuration.GetSection("TcpServerConfig");
             tcpServerConfigSection.Bind(tcpServerConfig);
-
-            var client = new TcpClient(machineName, tcpServerConfig.Port);
-            LogSink("Client connected.");
-
-            // Create an SSL stream that will close the client's stream.
-            var sslStream = new SslStream(client.GetStream(), false, ValidateServerCertificate, null);
-            try
+            var clients = new List<Client>();
+            foreach (var i in Enumerable.Range(1, 32))
             {
-                // Get client certificate from store.
-                var clientCert = CertificateHandling.GetCertificateFromStore(tcpServerConfig.CertificateThumbprint, StoreLocation.CurrentUser);
-                sslStream.AuthenticateAsClient(machineName, new X509Certificate2Collection(clientCert), SslProtocols.Tls13, false);
+                // Create a TCP/IP client socket.
+                // machineName is the host running the server application.
+                var tcpClient = new TcpClient(serverName, tcpServerConfig.Port);
+                var serversClient = new Client(tcpClient, tcpServerConfig.CertificateThumbprint, serverName);
+                clients.Add(serversClient);
             }
-            catch (AuthenticationException e)
+
+            var taskList = new List<Task>();
+            foreach (var client in clients)
             {
-                LogSink(string.Format("Exception: {0}", e.Message));
-                if (e.InnerException != null)
-                {
-                    LogSink(string.Format("Inner exception: {0}", e.InnerException.Message));
-                }
-
-                LogSink("Authentication failed - closing the connection.");
-                client.Close();
-                return;
-            }
-            LogSink("Client authenticated.");
-
-            // Init session.
-            var sessionName = "CliClient-Main";
-            var sessionRequest = new SessionRequest { SessionName = sessionName };
-            var jsonStringSessionRequest = JsonConvert.SerializeObject(sessionRequest, Formatting.None, _jsonSendSerializerSettings);
-            sslStream.Write(Encoding.UTF8.GetBytes(new StringBuilder().AppendLine(jsonStringSessionRequest).ToString()));
-            sslStream.Flush();
-
-            // Read server response.
-            var serverMsg = protocol.ReadMessage(sslStream);
-            ConsoleWriteServerMessage(serverMsg);
-            var serverSessionInfo = JsonConvert.DeserializeObject<SessionInfo>(serverMsg, _jsonReceiveSerializerSettings);
-
-            do
-            {
-                LogSink("Enter an e-mail address to be applied to an Account object that will b sent to the server. Or enter quit to exit:");
-                var msg = GetInput();
-
-                // Check for quit/shutdown.
-                if (msg?.ToLower().Equals("quit") ?? false)
-                    break;
-
                 try
                 {
-                    var payloads = CreatePayload(serverSessionInfo, msg);
-                    foreach (var payload in payloads)
-                        SendData(payload, sslStream, protocol);
+                    // Start execution of the server/listener on a separate task (Threadpool Thread) and therefor leave the current thread Nr.1. 
+                    // This wills proper cancellation while the listener blocks in AcceptTcpClient method.
+                    var clientTask = Task.Run(() => { client.ClientSession(); });
+                    taskList.Add(clientTask);
                 }
                 catch (Exception e)
                 {
-                    LogSink(e.Message);
+                    var a = e.Message;
+                }
+            }
+            Task.WaitAll(taskList.ToArray());
+        }
+
+        #endregion
+
+        #region Private members
+
+        private readonly JsonSerializerSettings _jsonSendSerializerSettings = new JsonSerializerSettings
+        {
+            TypeNameHandling = TypeNameHandling.All, 
+            StringEscapeHandling = StringEscapeHandling.Default,
+            NullValueHandling = NullValueHandling.Ignore
+        };
+
+        private readonly JsonSerializerSettings _jsonReceiveSerializerSettings = new JsonSerializerSettings
+        {
+            TypeNameHandling = TypeNameHandling.Auto,
+            StringEscapeHandling = StringEscapeHandling.Default,
+            NullValueHandling = NullValueHandling.Ignore
+        };
+        
+        private TcpClient _tcpClient { get; set; }
+        private readonly SslStream _sslStream;
+        private string _certThumbprint { get; set; }
+        private string _serverName { get; set; }
+        //private readonly string _endOfMessage = Environment.NewLine;
+        private readonly string _endOfMessage = "\n\r";
+
+        #endregion
+
+        #region Constructor/s
+
+        public Client(TcpClient tcpClient, string certThumbprint, string serverName)
+        {
+            _tcpClient = tcpClient;
+            _certThumbprint = certThumbprint;
+            _serverName = serverName;
+            // Create an SSL stream that will close the client's stream.
+            _sslStream = new SslStream(_tcpClient.GetStream(), false, ValidateServerCertificate);
+        }
+
+        #endregion
+
+        #region Public methods
+
+        public void ClientSession()
+        {
+            try
+            {
+                // Get client certificate from store.
+                var clientCert = CertificateHandling.GetCertificateFromStore(_certThumbprint, StoreLocation.CurrentUser);
+                _sslStream.AuthenticateAsClient(_serverName, new X509Certificate2Collection(clientCert), SslProtocols.Tls13, false);
+            }
+            catch (AuthenticationException e)
+            {
+                _tcpClient.Close();
+                return;
+            }
+
+            CancellationTokenSource cancellationSource = new CancellationTokenSource();
+
+            var sendingTask = Task.Run(() =>
+            {
+                try
+                {
+                    var payloads = CreatePayload();
+
+                    for (int i = 0; i < 25; i++)
+                    {
+                        foreach (var payload in payloads)
+                        {
+                            SendData(payload);
+                            // Wait some milliseconds (play with 1ms - 10ms) to keep some real world context.
+                            Thread.Sleep(5);
+                        }
+                    }
+
+                    try
+                    {
+                        // End session.
+                        var sessionInfo = new SessionInfo { CloseNow = true };
+                        var jsonStringSessionInfo = JsonConvert.SerializeObject(sessionInfo, Formatting.None, _jsonSendSerializerSettings);
+                        //                var jsonSessionInfoString = GetShortFormMessage(sessionInfo);
+                        WriteToSslStream(jsonStringSessionInfo);
+                    }
+                    catch (Exception e)
+                    {
+                    }
+                }
+                catch (Exception e)
+                {
                 }
 
-            } while (true);
+            });
+
+            var receivingTask = Task.Run(() =>
+            {
+                try
+                {
+                    // Read server response.
+                    while (!cancellationSource.Token.IsCancellationRequested)
+                    {
+                        var protocol = new Protocol(null); // Get logger from somewhere.
+                        var serverMsg = protocol.ReadMessage(_sslStream);
+                        //var serverSessionInfo = JsonConvert.DeserializeObject<SessionInfo>(serverMsg, _jsonReceiveSerializerSettings);
+                    }
+                }
+                catch (Exception e)
+                {
+                }
+
+            }, cancellationSource.Token);
+
+
+            // When finished sending, we send the SessionInfo.CloseNow message.
+            sendingTask.GetAwaiter().GetResult();
+            Thread.Sleep(10000);
+            cancellationSource.Cancel();
+            receivingTask.GetAwaiter().GetResult();
 
             try
             {
-                // End session.
-                var sessionInfo = new SessionInfo { SessionName = sessionName, Id = serverSessionInfo?.Id ?? 0, CloseNow = true };
-                var jsonSessionInfoString = JsonConvert.SerializeObject(sessionInfo, Formatting.None, _jsonSendSerializerSettings);
-                sslStream.Write(Encoding.UTF8.GetBytes(new StringBuilder().AppendLine(jsonSessionInfoString).ToString()));
-                sslStream.Flush();
-            }
-            catch (Exception e)
-            {
-                LogSink(e.Message);
-            }
-
-            try
-            {
-                if (client.Client.Connected)
-                    client.Client.Shutdown(SocketShutdown.Both);
+                if (_tcpClient.Client.Connected)
+                    _tcpClient.Client.Shutdown(SocketShutdown.Both);
             }
             finally
             {
                 // Close the client connection.
-                client.Client.Close();
-                client.Close();
+                _tcpClient.Client.Close();
+                _tcpClient.Close();
             }
         }
 
-        private void SendData(Payload payload, SslStream sslStream, Protocol protocol)
+        #endregion
+
+        #region Private methods
+
+        private void WriteToSslStream(string jsonStringSessionRequest)
         {
-            string serverMsg;
+            var msgBuilder = new StringBuilder().Append(jsonStringSessionRequest).Append(_endOfMessage);
+            _sslStream.Write(Encoding.UTF8.GetBytes(msgBuilder.ToString()));
+            _sslStream.Flush();
+        }
+
+        private void SendData(Payload payload)//, Func<string> objectSerializer)
+        {
             // Spezial serializer Settings.
             var jsonPayloadString = JsonConvert.SerializeObject(payload, Formatting.None, _jsonSendSerializerSettings);
-            sslStream.Write(Encoding.UTF8.GetBytes(new StringBuilder().AppendLine(jsonPayloadString).ToString()));
-            sslStream.Flush();
+//            var jsonPayloadString = GetShortFormMessage(payload);
+            WriteToSslStream(jsonPayloadString);
 
-            // Read server response.
-            serverMsg = protocol.ReadMessage(sslStream);
-            ConsoleWriteServerMessage(serverMsg);
+            //var protocol = new Protocol(null); // Get logger from somewhere.
+            //var serverMsg = protocol.ReadMessage(_sslStream);
         }
 
-        private static string? GetInput()
+        private string GetShortFormMessage(object msg)
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            var msg = Console.ReadLine();
-            Console.ForegroundColor = ConsoleColor.White;
-            return msg;
+            return JsonConvert.SerializeObject(msg, Formatting.None, _jsonSendSerializerSettings);
+
+            var msgFrag = JsonConvert.SerializeObject(msg, Formatting.None, _jsonSendSerializerSettings).Substring(1);
+            return "{" + string.Format("\"$type\":\"{0}\",{1}", msg.GetType().AssemblyQualifiedName, msgFrag);
+
+        }
+        private bool ValidateServerCertificate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+        {
+            if (sslPolicyErrors == SslPolicyErrors.None)
+                return true;
+
+            // Do not allow this client to communicate with unauthenticated servers.
+            return false;
         }
 
-        private static Payload[] CreatePayload(SessionInfo? serverSessionInfo, string? msg)
+        #endregion
+
+
+        #region Create test data.
+
+        private Payload[] CreatePayload()
         {
+            // File content of a picture of 104KB size.
+            var filePath = "..\\..\\..\\product.jpg";
+            var base64FileString = GetBase64StringFromFilePath(filePath);
+
+            // Product business object that contains the image (as base64encoded string).
+            var product = new Product
+            {
+                ItemPicture = base64FileString,
+            };
+
+            // Account business objext.
             var account = new Account
             {
                 Id = 777,
-                Email = msg ?? "some.default.instead@of.null",
+                Email = "some.one.instead.of@no.one",
                 Active = true,
                 CreatedDate = DateTime.Now,
                 Roles = new[] { $"User{Environment.NewLine}", "Admin" },
+                Version = 100
             };
 
-            var id = DateTime.Now.Millisecond * DateTime.Now.Second;
-
-            var payload = new Payload[]
+            // Create a payload object array based on the data created above.
+            var payload = new[]
             {
                 new()
                 {
                     // Some random context information.
-                    Context = new MessageContext
-                    {
-                        SessionId = serverSessionInfo?.Id ?? 0,
-                        MessageId = ++id
-                    },
-                    Message = new Create<Account>
-                    {
-                        Value = account
-                    }
+                    Context = GetNewMessageContext(),
+                    Message = new Create<Account> { Value = account }
                 },
-                new()
-                {
-                    Context = new MessageContext
-                    {
-                        SessionId = serverSessionInfo?.Id ?? 0,
-                        MessageId = ++id
-                    },
-                    Message = new Read<Account>
-                    {
-                        Id = account.Id
-                    }
-                },
+                GetNewProductPayload(product),
                 new()
                 {
                     // Some random context information.
-                    Context = new MessageContext
-                    {
-                        SessionId = serverSessionInfo?.Id ?? 0,
-                        MessageId = ++id
-                    },
-                    Message = new Update<Account>
-                    {
-                        Value = account
-                    }
+                    Context = GetNewMessageContext(),
+                    Message = new Read<Account> { Id = account.Id }
                 },
-                new()
-                {
-                    Context = new MessageContext
-                    {
-                        SessionId = serverSessionInfo?.Id ?? 0,
-                        MessageId = ++id
-                    },
-                    Message = new Delete<Account>
-                    {
-                        Id = account.Id
-                    }
-                },
+                GetNewProductPayload(product),
                 new()
                 {
                     // Some random context information.
-                    Context = new MessageContext
-                    {
-                        SessionId = serverSessionInfo?.Id ?? 0,
-                        MessageId = ++id
-                    },
-                    // Some payload data containing the user input.
+                    Context = GetNewMessageContext(),
+                    Message = new Update<Account> { Value = account }
+                },
+                GetNewProductPayload(product),
+                new()
+                {
+                    // Some random context information.
+                    Context = GetNewMessageContext(),
+                    Message = new Delete<Account> { Id = account.Id }
+                },
+                GetNewProductPayload(product),
+                new()
+                {
+                    // Some random context information.
+                    Context = GetNewMessageContext(),
                     Message = account
                 },
-
-
+                GetNewProductPayload(product)
             };
-
+            
             return payload;
         }
 
-        private void LogSink(string msg)
+        private MessageContext GetNewMessageContext()
         {
-            Console.WriteLine(msg);
-            Serilog.Log.Logger.Information(msg);
+            return new MessageContext
+            {
+                MessageId = GetNewId()
+            };
         }
 
-        private void ConsoleWriteServerMessage(string serverMessage)
+        private Payload GetNewProductPayload(Product product)
         {
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine("Server response: {0}", serverMessage);
-            Console.ForegroundColor = ConsoleColor.White;
+            return new()
+            {
+                // Some random context information.
+                Context = GetNewMessageContext(),
+                // Some payload data containing the user input.
+                Message = product
+            };
         }
+
+        private int GetNewId()
+        {
+            // Konrad Rudolph :)
+            // https://stackoverflow.com/questions/65292465/biginteger-intvalue-equivalent-in-c-sharp
+            return (int)(uint)(new BigInteger(Guid.NewGuid().ToByteArray()) & uint.MaxValue);
+        }
+
+        private string GetBase64StringFromFilePath(string filePath)
+        {
+            byte[] fileBytes;
+
+            if (!File.Exists(filePath))
+                return null;
+
+
+            var image = Image.FromFile(filePath);
+            using (var ms = new MemoryStream())
+            {
+                image.Save(ms, image.RawFormat);
+                fileBytes = ms.ToArray();
+            }
+            return Convert.ToBase64String(fileBytes);
+        }
+
+        #endregion
     }
 }

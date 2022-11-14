@@ -6,10 +6,9 @@ namespace JsonServerKit.AppServer.Interfaces
     {
         #region Interface methods
 
-        public Task<bool> AuthenticateServerAsync(CancellationToken stoppingToken);
+        public Task<bool> AuthenticateServerAsync(bool requireClientAuthentication, bool checkCertificateRevocation, CancellationToken stoppingToken);
         public void StartReceiving(CancellationToken stoppingToken);
         public void StartSending(CancellationToken stoppingToken);
-        public void HandleSessionRequest(dynamic incommingMsg, string msg, ReceiveSendContext receiveSendContext);  
         public void HandlePayload(dynamic incommingMsg, string msg, ReceiveSendContext receiveSendContext);
         public bool HandleSessionInfo(dynamic incommingMsg, string msg);
 

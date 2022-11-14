@@ -4,6 +4,6 @@ namespace JsonServerKit.AppServer.Interfaces
 {
     public interface IProtocol
     {
-        public string ReadMessage(SslStream sslStream);
+        public string[] ReadMessage(SslStream sslStream);
     }
 }

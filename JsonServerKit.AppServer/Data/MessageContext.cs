@@ -6,7 +6,8 @@
     /// </summary>
     public class MessageContext
     {
-        public int MessageId { get; set; }
-        public int SessionId { get; set; }
+        public string MessageGuid { get; set; }
+        public long MessageId { get; set; }
+        public object BusinessContext { get; set; }
     }
 }

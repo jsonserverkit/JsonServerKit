@@ -15,12 +15,19 @@ namespace JsonServerKit.AppServer
     {
         #region Server configuration
 
+        /// <summary>
+        /// See interface definition <see cref="ITcpServerConfig"/>.
+        /// </summary>
         public class TcpServerConfig : ITcpServerConfig
         {
             public int Port { get; set; }
             public string CertificatePath { get; set; }
             public string CertificatePassword { get; set; }
             public string CertificateThumbprint { get; set; }
+            public int ReceiveTimeout { get; set; }
+            public int SendTimeout { get; set; }
+            public bool RequireClientAuthentication { get; set; }
+            public bool CheckCertificateRevocation { get; set; }
         }
 
         #endregion
@@ -118,13 +125,18 @@ namespace JsonServerKit.AppServer
                 try
                 {
                     // Log info about the connected client.
-                    _logger.Information("Client {2} family:{0} sockettyp:{1} connected.", client.Client.AddressFamily, client.Client.SocketType, client.Client.RemoteEndPoint);
+                    _logger.Information("Client {2} family:{0} sockettyp:{1} connected.", client.Client.AddressFamily,
+                        client.Client.SocketType, client.Client.RemoteEndPoint);
                     
+                    // Set Timeout's
+                    client.ReceiveTimeout = _configuration.ReceiveTimeout;
+                    client.SendTimeout = _configuration.SendTimeout;
+
                     // Create a TcpSession object that handles communication.
                     var tcpSession = _tcpSessionFactory(client, _serverCertificate);
 
                     // Authenticate will be handlet async on a seperate thread.
-                    var authenticationTask = tcpSession.AuthenticateServerAsync(stoppingToken);
+                    var authenticationTask = tcpSession.AuthenticateServerAsync(_configuration.RequireClientAuthentication,_configuration.CheckCertificateRevocation, stoppingToken);
                     if (!authenticationTask.Result)
                         return;
 

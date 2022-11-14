@@ -2,6 +2,6 @@
 {
     public class Update<T>
     {
-        public object Value { get; set; }
+        public T Value { get; set; }
     }
 }

@@ -13,14 +13,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="..\Your.ServerConsoleRuntime\appsettings.json" Link="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.2.8" />
     <PackageReference Include="MSTest.TestFramework" Version="2.2.8" />
     <PackageReference Include="coverlet.collector" Version="3.1.2" />
+    <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\JsonServerKit.AppServer\JsonServerKit.AppServer.csproj" />
+    <ProjectReference Include="..\Your.CliClient\Your.CliClient.csproj" />
   </ItemGroup>
 
 </Project>
