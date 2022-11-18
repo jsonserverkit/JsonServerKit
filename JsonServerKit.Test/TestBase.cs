@@ -1,9 +1,17 @@
 ﻿
+// .Net
+
+// JsonServerKit
+// Your domain
+
 namespace JsonServerKit.Test
 {
     [TestClass]
     public abstract class TestBase
     {
+
+        #region Test setup
+
         [TestInitialize]
         public void Setup()
         {
@@ -13,5 +21,8 @@ namespace JsonServerKit.Test
         public void Cleanup()
         {
         }
+
+        #endregion
+
     }
 }
