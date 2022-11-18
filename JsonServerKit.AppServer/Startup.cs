@@ -1,5 +1,4 @@
 ﻿using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using JsonServerKit.AppServer.Interfaces;
 using JsonServerKit.AppServer.Operations;
@@ -37,7 +36,7 @@ namespace JsonServerKit.AppServer
     /// .Net Core "Worker Projekt" als Windows Service (via OS Boardmittel sc.exe) konfigurieren.
     /// https://code-maze.com/aspnetcore-running-applications-as-windows-service/
     /// </summary>
-    public class Runtime
+    public class Startup
     {
         #region Private members
 
@@ -130,7 +129,7 @@ namespace JsonServerKit.AppServer
                     {
                         services.AddTransient<ICertificateHandling>(sp => new CertificateHandling());
                         services.AddTransient<IProtocol>(sp => new Protocol(sp.GetRequiredService<ILogger>()));
-                        // Resolving Dependencies at Runtime.
+                        // Resolving dependencies at runtime.
                         services.AddSingleton<Func<TcpClient, X509Certificate2, ITcpSession>>(SessionFactory.GetTcpSession);
                     })
                     // TcpServer erstellen.

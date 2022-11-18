@@ -96,10 +96,10 @@ namespace JsonServerKit.Test
 
         private static async Task MockStartTcpServer(CancellationTokenSource cancellationSource)
         {
-            var runtime = new Runtime();
+            var startup = new Startup();
 
             // Provide appsettings.json configuration to DI.
-            runtime.ConfigureAppConfiguration(new List<Action<HostBuilderContext, IConfigurationBuilder>>
+            startup.ConfigureAppConfiguration(new List<Action<HostBuilderContext, IConfigurationBuilder>>
             {
                 (_, config) =>
                 {
@@ -110,21 +110,21 @@ namespace JsonServerKit.Test
             });
 
             // Configure required/additional services for DI.
-            runtime.ConfigureServices(new List<Action<IServiceCollection>>
+            startup.ConfigureServices(new List<Action<IServiceCollection>>
             {
                 // Configure/provide a logger implementation.
-                // This Version of "JsonServerKit.AppServer.Runtime" requires a Wrapper around the Serilog logger.
+                // This Version of "JsonServerKit.AppServer.Startup" requires a Wrapper around the Serilog logger.
                 // This dependency might become subject to change.
                 services => { services.AddSingleton<ILog, Log>(); }
             });
 
             // Configure the domain handlers.
-            runtime.ConfigureDomainObjectHandler(typeof(Product), new ProductOperation());
-            runtime.ConfigureDomainObjectHandler(typeof(Account), new AccountOperation());
-            runtime.ConfigureDomainObjectCrudHandler(new[] { typeof(Create<Account>), typeof(Read<Account>), typeof(Update<Account>), typeof(Delete<Account>) }, new AccountCrudOperations());
+            startup.ConfigureDomainObjectHandler(typeof(Product), new ProductOperation());
+            startup.ConfigureDomainObjectHandler(typeof(Account), new AccountOperation());
+            startup.ConfigureDomainObjectCrudHandler(new[] { typeof(Create<Account>), typeof(Read<Account>), typeof(Update<Account>), typeof(Delete<Account>) }, new AccountCrudOperations());
 
             // Call to run.
-            await runtime.Run(null, cancellationSource);
+            await startup.Run(null, cancellationSource);
         }
 
         public void MockStartTcpClientAndRun(CancellationToken cancellationToken)
