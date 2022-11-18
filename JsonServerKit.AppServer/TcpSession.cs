@@ -14,6 +14,12 @@ using Serilog;
 namespace JsonServerKit.AppServer
 {
     /// <summary>
+    /// Designed to handle bidirectional client/server communication.
+    /// The interface of <see cref="ITcpSession"/> therefore provides the method signature/s.
+    ///
+    /// --------------------------------------------------------------------------------------------------------------------------------------
+    /// Techdoc
+    /// --------------------------------------------------------------------------------------------------------------------------------------
     /// TLS/SSL (and .NET Framework 4.0)
     /// https://www.red-gate.com/simple-talk/development/dotnet-development/tlsssl-and-net-framework-4-0/
     /// Level of thread safety
@@ -25,6 +31,28 @@ namespace JsonServerKit.AppServer
     /// TPL (und Workflow)
     /// https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/tpl-and-traditional-async-programming
     /// https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/how-to-implement-a-producer-consumer-dataflow-pattern
+    /// --------------------------------------------------------------------------------------------------------------------------------------
+    /// Does & Don't
+    /// --------------------------------------------------------------------------------------------------------------------------------------
+    /// Do use Task.Run for asynchronous things that use a thread.
+    /// Do use Task.ResultFrom for things that do not require separate thread pool threads to execute.
+    /// Do use ValueTask<![CDATA[<T>]]> for cheap computation tasks.
+    /// Don't use .Result or .Wait as they might block/deadlock and because they waste rescources (separate thread) and prevent scaling.
+    /// Don't use .ContinueWith if it is not the specific match for the current application scenario.
+    /// Do pass the cancellation token and to catch the TaskCanceledException with proper logging.
+    /// --------------------------------------------------------------------------------------------------------------------------------------
+    /// Documentation
+    /// --------------------------------------------------------------------------------------------------------------------------------------
+    /// DI - Pattern
+    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection
+    /// Framework support work "worker services"
+    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/workers
+    /// Generic Host - "Einstiegspunkt" zu den Ressourcen einer Applikation
+    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host
+    /// Anwendung: DI Tutorial 
+    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-usage
+    /// .Net Core "Worker Projekt" als Windows Service (via OS Boardmittel sc.exe) konfigurieren.
+    /// https://code-maze.com/aspnetcore-running-applications-as-windows-service/
     /// </summary>
     public class TcpSession : ITcpSession
     {
@@ -39,6 +67,7 @@ namespace JsonServerKit.AppServer
         private Task _receiver = null;
         private Task _sender = null;
         private BufferBlock<ReceiveSendContext> _blockingBuffer = new();
+        private int _waitAfterCompletion = 10;
 
         #region Messages
 
@@ -176,6 +205,8 @@ namespace JsonServerKit.AppServer
                     // Before closing we mark the buffer as complete and wait for completion.
                     _blockingBuffer.Complete();
                     _blockingBuffer.Completion.GetAwaiter().GetResult();
+                    // After the buffer was completed we wait some ms to be sure the message could be sent.
+                    Thread.Sleep(_waitAfterCompletion);
                 }
                 catch (Exception e)
                 {

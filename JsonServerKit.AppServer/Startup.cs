@@ -13,28 +13,7 @@ using Log = Serilog.Log;
 namespace JsonServerKit.AppServer
 {
     /// <summary>
-    /// --------------------------------------------------------------------------------------------------------------------------------------
-    /// Does & Don't
-    /// --------------------------------------------------------------------------------------------------------------------------------------
-    /// Do use Task.Run for asynchronous things that use a thread.
-    /// Do use Task.ResultFrom for things that do not require separate thread pool threads to execute.
-    /// Do use ValueTask<![CDATA[<T>]]> for cheap computation tasks.
-    /// Don't use .Result or .Wait as they might block/deadlock and because they waste rescources (separate thread) and prevent scaling.
-    /// Don't use .ContinueWith if it is not the specific match for the current application scenario.
-    /// Do pass the cancellation token and to catch the TaskCanceledException with proper logging.
-    /// --------------------------------------------------------------------------------------------------------------------------------------
-    /// Documentation
-    /// --------------------------------------------------------------------------------------------------------------------------------------
-    /// DI - Pattern
-    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection
-    /// Framework support work "worker services"
-    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/workers
-    /// Generic Host - "Einstiegspunkt" zu den Ressourcen einer Applikation
-    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/generic-host
-    /// Anwendung: DI Tutorial 
-    /// https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection-usage
-    /// .Net Core "Worker Projekt" als Windows Service (via OS Boardmittel sc.exe) konfigurieren.
-    /// https://code-maze.com/aspnetcore-running-applications-as-windows-service/
+    /// Designed to handle application/startup configuration. 
     /// </summary>
     public class Startup
     {

@@ -10,8 +10,7 @@ namespace JsonServerKit.Test
     [TestClass]
     public class TestSsl
     {
-        static readonly byte[] clientMessage = Encoding.ASCII.GetBytes("This is a message from the client");
-        static readonly byte[] serverMessage = Encoding.ASCII.GetBytes("This is a message from the server");
+        #region Test setup
 
         public void Setup()
         {
@@ -20,6 +19,17 @@ namespace JsonServerKit.Test
         public void Teardown()
         {
         }
+
+        #endregion
+
+        #region Private members
+
+        static readonly byte[] clientMessage = Encoding.ASCII.GetBytes("This is a message from the client");
+        static readonly byte[] serverMessage = Encoding.ASCII.GetBytes("This is a message from the server");
+
+        #endregion
+
+        #region Test methods
 
         [TestMethod]
         public void TestServerCertificate()
@@ -103,5 +113,7 @@ namespace JsonServerKit.Test
 
             evtDone.WaitOne();
         }
+
+        #endregion
     }
-}
+    }
