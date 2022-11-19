@@ -172,6 +172,8 @@ namespace JsonServerKit.AppServer
             if (sessionInfo.CloseNow)
             {
                 _logger.Information(_msgCloseSessionOnRequest);
+                // Before closing we wait some time for the outgoing stuff to be sent.
+                //Thread.Sleep(_waitBeforeClose);
                 return true;
             }
 
@@ -193,10 +195,13 @@ namespace JsonServerKit.AppServer
                 _logger.Information(_msgStartReceiving);
                 do
                 {
-                    // Read a message/s from the client.
-                    var receiveSendContext = ReadMessage();
-
                     var close = false;
+
+                    // Read a message/s from the client.
+                    var receiveSendContext = new ReceiveSendContext();
+                    if (!ReadMessage(receiveSendContext))
+                        break;
+
                     foreach (var message in receiveSendContext.InputMessages)
                     {
                         if (!ProcessMessage(message, receiveSendContext))
@@ -235,11 +240,19 @@ namespace JsonServerKit.AppServer
             }
         }
 
-        private ReceiveSendContext ReadMessage()
+        private bool ReadMessage(ReceiveSendContext receiveSendContext)
         {
-            var receiveSendContext = new ReceiveSendContext();
-            receiveSendContext.InputMessages = _protocol.ReadMessage(_sslStream);
-            return receiveSendContext;
+            try
+            {
+                receiveSendContext.InputMessages = _protocol.ReadMessage(_sslStream);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e.Message);
+                CloseOnException();
+                return false;
+            }
+            return true;
         }
 
         private bool ProcessMessage(string msg, ReceiveSendContext receiveSendContext)
