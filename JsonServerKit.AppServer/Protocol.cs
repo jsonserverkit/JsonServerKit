@@ -64,6 +64,9 @@ namespace JsonServerKit.AppServer
                 }
             } while (networkReadBytesCount != 0);
 
+            if (networkReadBytesCount == 0)
+                return new string[] { };
+
             // Bring the "wohle" messages to return, leave an additional new messages start in place.
             var inputSplit = _currentMessage.Split(_endOfMessage);
             string[] inputMessages = null;
