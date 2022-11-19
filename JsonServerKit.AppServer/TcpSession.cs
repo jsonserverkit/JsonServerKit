@@ -171,9 +171,17 @@ namespace JsonServerKit.AppServer
             _logger.Information("{0} {1}", _msgMessageData, msg);
             if (sessionInfo.CloseNow)
             {
+                try
+                {
+                    // Before closing we mark the buffer as complete and wait for completion.
+                    _blockingBuffer.Complete();
+                    _blockingBuffer.Completion.GetAwaiter().GetResult();
+                }
+                catch (Exception e)
+                {
+                    _logger.Error("Exception: {0}", e.Message);
+                }
                 _logger.Information(_msgCloseSessionOnRequest);
-                // Before closing we wait some time for the outgoing stuff to be sent.
-                //Thread.Sleep(_waitBeforeClose);
                 return true;
             }
 
@@ -198,12 +206,13 @@ namespace JsonServerKit.AppServer
                     var close = false;
 
                     // Read a message/s from the client.
-                    var receiveSendContext = new ReceiveSendContext();
-                    if (!ReadMessage(receiveSendContext))
+                    var inputContext = new ReceiveSendContext();
+                    if (!ReadMessage(inputContext))
                         break;
 
-                    foreach (var message in receiveSendContext.InputMessages)
+                    foreach (var message in inputContext.InputMessages)
                     {
+                        var receiveSendContext = new ReceiveSendContext { InputMessages = new[] { message } };
                         if (!ProcessMessage(message, receiveSendContext))
                         {
                             close = true;
@@ -228,9 +237,6 @@ namespace JsonServerKit.AppServer
             }
             finally
             {
-                // Call the buffers completion.
-                _blockingBuffer.Complete();
-                
                 // The client stream will be closed with the sslStream
                 // because we specified this behavior when creating
                 // the sslStream.
