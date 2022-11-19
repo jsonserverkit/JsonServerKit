@@ -1,5 +1,6 @@
 ﻿using JsonServerKit.AppServer.Data;
 using JsonServerKit.AppServer.Interfaces;
+using JsonServerKit.AppServer.LogTemplate;
 using JsonServerKit.AppServer.Operations;
 using Serilog;
 
@@ -10,6 +11,15 @@ namespace JsonServerKit.AppServer
         #region Private members
 
         private Dictionary<Type, IOperation> _domainObjectHandlers = new();
+
+
+        #region Messages
+
+        // Errors
+        private readonly string _msgErrorNoOperationFound = "No operation registered!";
+
+        #endregion
+
 
         #endregion
 
@@ -36,7 +46,10 @@ namespace JsonServerKit.AppServer
         {
             var type = jsonObject.GetType();
             if (!_domainObjectHandlers.ContainsKey(type))
+            {
+                logger.Warning(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, context.MessageId, _msgErrorNoOperationFound);
                 return null;
+            }
 
             return _domainObjectHandlers[type].HandleObject(jsonObject, context, logger);
         }
