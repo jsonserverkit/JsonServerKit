@@ -144,7 +144,7 @@ namespace JsonServerKit.AppServer
             _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgMessageData, msg);
             _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgBusinessObject, payload?.Message?.GetType());
       
-            // Payload with Message null means connection.
+            // Payload with Message null means connection close.
             if (payload.Message == null)
                 throw new ArgumentNullException(nameof(payload.Message));
 
@@ -209,22 +209,21 @@ namespace JsonServerKit.AppServer
                             close = true;
                             break;
                         }
+
+                        try
+                        {
+                            // Post the outgoing message to the buffer.
+                            PostResponseMessageToBuffer(receiveSendContext);
+                        }
+                        catch (Exception e)
+                        {
+                            // This would be fatal. Log with highest alert.
+                            _logger.Error(e.Message);
+                        }
                     }
 
                     if (close)
                         break;
-
-                    try
-                    {
-                        // Post the outgoing message to the buffer.
-                        PostResponseMessageToBuffer(receiveSendContext);
-                    }
-                    catch (Exception e)
-                    {
-                        // This would be fatal. Log with highest alert.
-                        _logger.Error(e.Message);
-                    }
-
                 } while (true);
             }
             finally
