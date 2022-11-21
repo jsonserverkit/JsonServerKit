@@ -44,7 +44,7 @@ namespace JsonServerKit.AppServer
         /// <returns>Message/s as string.</returns>
         public string[] ReadMessage(SslStream sslStream)
         {
-            var networkBuffer = new byte[2048];
+            var networkBuffer = new byte[32768];
             // ReSharper disable once RedundantAssignment
             var networkReadBytesCount = -1;
             do

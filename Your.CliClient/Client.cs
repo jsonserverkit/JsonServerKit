@@ -1,12 +1,16 @@
-﻿using System.Net.Security;
+﻿using System.Diagnostics;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using JsonServerKit.AppServer;
 using JsonServerKit.AppServer.Data;
+using JsonServerKit.AppServer.LogTemplate;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using Serilog;
+using Log = JsonServerKit.Logging.Log;
 
 namespace Your.CliClient
 {
@@ -29,6 +33,18 @@ namespace Your.CliClient
                 .AddJsonFile("appsettings.json")
                 .Build();
 
+
+            var logConfig = new Log.LogConfig();
+            var logConfigSection = configuration.GetSection("LogConfig");
+            logConfigSection.Bind(logConfig);
+
+            // Logger
+            // Logging erstellen.
+            var pId = Process.GetCurrentProcess().Id;
+            logConfig.PathLogFileJsonFormated += $".Client.txt";//{pId}.{DateTime.Now:yyyy.MM.dd}.txt
+            logConfig.PathLogFileTextFormated += $".Client.txt";
+            Serilog.Log.Logger = new Log(configuration, logConfig).GetLogger();
+
             var tcpServerConfig = new TcpServer.TcpServerConfig();
             var tcpServerConfigSection = configuration.GetSection("TcpServerConfig");
             tcpServerConfigSection.Bind(tcpServerConfig);
@@ -38,7 +54,8 @@ namespace Your.CliClient
                 // Create a TCP/IP client socket.
                 // machineName is the host running the server application.
                 var tcpClient = new TcpClient(serverName, tcpServerConfig.Port);
-                var serversClient = new Client(tcpClient, tcpServerConfig.CertificateThumbprint, serverName);
+                var serversClient = new Client(tcpClient, tcpServerConfig.CertificateThumbprint, serverName,
+                    Serilog.Log.Logger);
                 clients.Add(serversClient);
             }
 
@@ -76,20 +93,29 @@ namespace Your.CliClient
         private readonly SslStream _sslStream;
         private string _certThumbprint { get; set; }
         private string _serverName { get; set; }
+        private ILogger _logger { get; set; }
+        private Protocol _protocol;
+
         //private readonly string _endOfMessage = Environment.NewLine;
         private readonly string _endOfMessage = "\n\r";
+
+        private readonly string _msgMessageSent = "Message sent.";
+        private readonly string _msgMessageReceived = "Message received.";
+
 
         #endregion
 
         #region Constructor/s
 
-        public Client(TcpClient tcpClient, string certThumbprint, string serverName)
+        public Client(TcpClient tcpClient, string certThumbprint, string serverName, ILogger logger)
         {
             _tcpClient = tcpClient;
             _certThumbprint = certThumbprint;
             _serverName = serverName;
             // Create an SSL stream that will close the client's stream.
             _sslStream = new SslStream(_tcpClient.GetStream(), false, ValidateServerCertificate);
+            _logger = logger;
+            _protocol = new Protocol(_logger);
         }
 
         #endregion
@@ -98,6 +124,7 @@ namespace Your.CliClient
 
         public void ClientSession(Payload[] payloads)
         {
+            var endSession = new ManualResetEvent(false);
             try
             {
                 // Get client certificate from store.
@@ -120,17 +147,16 @@ namespace Your.CliClient
                 try
                 {
 
-                    // Process the payload n times.
-                    foreach (var i in Enumerable.Range(1,1))
+                    foreach (var payload in payloads)
                     {
-                        foreach (var payload in payloads)
-                        {
-                            messageTrackingSend.Add(payload.Context.MessageId,payload);
-                            SendPayload(payload);
-                            // Wait some milliseconds (play with 1ms - 10ms) to keep some real world context.
-                            Thread.Sleep(5);
-                        }
+                        messageTrackingSend.Add(payload.Context.MessageId, payload);
+                        SendPayload(payload);
+                        _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, payload.Context.MessageId, _msgMessageSent);
+                        // Wait some milliseconds (play with 1ms - 10ms) to keep some real world context.
+                        Thread.Sleep(50);
                     }
+
+                    endSession.WaitOne();
 
                     // When finished sending, we send the SessionInfo.CloseNow message.
                     SendSessionInfo(new SessionInfo { CloseNow = true });
@@ -153,20 +179,32 @@ namespace Your.CliClient
                         if (!_sslStream.CanRead)
                             throw new OperationCanceledException($"{nameof(_sslStream.CanRead)} is false.");
 
-                        var protocol = new Protocol(null); // Get logger from somewhere.
-                        var serverMessages = protocol.ReadMessage(_sslStream);
+                        var serverMessages = _protocol.ReadMessage(_sslStream);
                         if (serverMessages.Length == 0)
-                        {
-                            receivefinished = true;
-                            break;
-                        }
+                            return receivefinished = true;
 
                         foreach (var message in serverMessages)
                         {
-                            var messageObject = JsonConvert.DeserializeObject<dynamic>(message, _jsonReceiveSerializerSettings);
-                            if (messageObject is PayloadInfo payloadInfo)
+                            try
                             {
-                                messageTrackingReceive.Add(payloadInfo.Context.MessageId, payloadInfo);
+                                //_logger.Information("Message received:{0}", message);
+                                var messageObject = JsonConvert.DeserializeObject<dynamic>(message, _jsonReceiveSerializerSettings);
+                                if (messageObject is PayloadInfo payloadInfo)
+                                {
+                                    _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers,
+                                        payloadInfo.Context.MessageId, _msgMessageReceived);
+                                    messageTrackingReceive.Add(payloadInfo.Context.MessageId, payloadInfo);
+
+                                    if (payloads.Length == messageTrackingReceive.Count)
+                                        return true;
+
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                // Log info about the message that may have caused an exception. Then throw.
+                                _logger.Error("Exception: {0}, on message:{1}", e.Message, message);
+                                throw;
                             }
                         }
                     }
@@ -178,6 +216,11 @@ namespace Your.CliClient
                     receivefailed = true;
                     return false;
                 }
+                finally
+                {
+                    endSession.Set();
+                }
+
 
             }, cancellationSource.Token);
 
@@ -191,7 +234,10 @@ namespace Your.CliClient
                 {
                     // If everything was answerd.
                     if (messageTrackingSend.Count == messageTrackingReceive.Count)
+                    {
                         break;
+                    }
+
 
                     // Or we finish if receiving task fails.
                     if (receivefailed)
@@ -204,6 +250,11 @@ namespace Your.CliClient
                     Thread.Sleep(200);
 
                 } while (true);
+                _logger.Information("Sent {0} messages. Received {1} messages.", messageTrackingSend.Count, messageTrackingReceive.Count);
+                var diff = messageTrackingSend.Keys.Except(messageTrackingReceive.Keys).ToList();
+                _logger.Information("Missing {0} messages.", diff.Count);
+                foreach (var messageId in diff)
+                    _logger.Information("Missing message with id: {0}", messageId);
             });
             checkCompetion.GetAwaiter().GetResult();
 
