@@ -1,5 +1,6 @@
 ﻿using JsonServerKit.AppServer.Data.Crud;
 using JsonServerKit.AppServer;
+using JsonServerKit.AppServer.Data;
 using JsonServerKit.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -109,7 +110,15 @@ namespace JsonServerKit.Test
         public void LoadTest()
         {
             // Run a number of clients in parallel to send a load (of Payload's) to the server.
-            Client.Startup(2, () => new Data().GetLoadTestPayload());
+            Client.Startup(32, () =>
+            {
+                var payloads = new List<Payload>();
+                // Create some payload objects.
+                foreach (var i in Enumerable.Range(1, 25))
+                    payloads.AddRange(new Data().GetLoadTestPayload());
+
+                return payloads.ToArray();
+            });
         }
 
         #endregion

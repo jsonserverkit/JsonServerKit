@@ -1,4 +1,4 @@
-﻿using System.Data;
+﻿using System.Collections.Concurrent;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -67,7 +67,9 @@ namespace JsonServerKit.AppServer
         private Task _receiver = null;
         private Task _sender = null;
         private BufferBlock<ReceiveSendContext> _blockingBuffer = new();
-        private int _waitAfterCompletion = 10;
+        private int _waitAfterCompletion = 200;
+        private ConcurrentQueue<ReceiveSendContext> _sendQueue = new ConcurrentQueue<ReceiveSendContext>();
+        private ManualResetEvent _sendEvend = new ManualResetEvent(false);
 
         #region Messages
 
@@ -76,7 +78,7 @@ namespace JsonServerKit.AppServer
         private readonly string _msgMessageReceived = "Message received:";
         private readonly string _msgStartProcessing = "Start message processing.";
         private readonly string _msgSessionStarted = "Session started.";
-        private readonly string _msgMessageResponseToBuffer = "Message response posted to output buffer.";
+        private readonly string _msgMessageResponseToQueue = "Message response posted to output queue.";
         private readonly string _msgMessageResponseSent = "Message response sent.";
         private readonly string _msgMessageData = "Message data:";
         private readonly string _msgBusinessObject = "Business object:";
@@ -170,7 +172,7 @@ namespace JsonServerKit.AppServer
                 throw new ArgumentNullException(nameof(payload.Context));
 
             var msgId = payload.Context.MessageId;
-            _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgMessageData, msg);
+            //_logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgMessageData, msg);
             _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, msgId, _msgBusinessObject, payload?.Message?.GetType());
       
             // Payload with Message null means connection close.
@@ -186,7 +188,7 @@ namespace JsonServerKit.AppServer
             
             // Assure a MessageContext is returned.
             if (payloadInfo.Context == null)
-                payloadInfo.Context = payload.Context;
+                payloadInfo.Context = payload.Context;  
 
             receiveSendContext.Context = payloadInfo.Context;
             receiveSendContext.OutputMessage = JsonConvert.SerializeObject(payloadInfo, Formatting.None, _jsonSendSerializerSettings);
@@ -253,7 +255,7 @@ namespace JsonServerKit.AppServer
                         try
                         {
                             // Post the outgoing message to the buffer.
-                            PostResponseMessageToBuffer(receiveSendContext);
+                            PostResponseMessageToQueue(receiveSendContext);
                         }
                         catch (Exception e)
                         {
@@ -291,6 +293,23 @@ namespace JsonServerKit.AppServer
             return true;
         }
 
+        /// <summary>
+        /// Performance issues with Json.Net (Newtonsoft.Json)
+        /// Alternatives:
+        /// https://stackoverflow.com/questions/64799591/is-there-a-high-performance-way-to-replace-the-binaryformatter-in-net5
+        /// V1: Protobuf
+        /// https://github.com/protobuf-net/protobuf-net
+        /// V2: MessagePack (See also its performance comparison charts)
+        /// https://github.com/neuecc/MessagePack-CSharp
+        /// V3: ZeroFormatter (Archived - Project was abandoned by maintainer in favor of MessagePack-CSharp)
+        /// https://github.com/neuecc/ZeroFormatter
+        /// ...
+        /// V4: BinaryPack - small project
+        /// https://www.nuget.org/packages/BinaryPack/
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <param name="receiveSendContext"></param>
+        /// <returns></returns>
         private bool ProcessMessage(string msg, ReceiveSendContext receiveSendContext)
         {
             try
@@ -324,6 +343,7 @@ namespace JsonServerKit.AppServer
                 }
                 */
                 // Deserialize incomming message as dynamic.
+                _logger.Information("Message read from Network RcvQ.");
                 var incommingMsg = JsonConvert.DeserializeObject<dynamic>(msg, _jsonReceiveSerializerSettings);
                 _logger.Information("{0} {1}", _msgMessageReceived, incommingMsg?.GetType());
 
@@ -358,15 +378,19 @@ namespace JsonServerKit.AppServer
             return true;
         }
 
-        private void PostResponseMessageToBuffer(ReceiveSendContext receiveSendContext)
+        private void PostResponseMessageToQueue(ReceiveSendContext receiveSendContext)
         {
             if (receiveSendContext.Context != null)
-                _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, receiveSendContext.Context.MessageId, _msgMessageResponseToBuffer);
+                _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, receiveSendContext.Context.MessageId, _msgMessageResponseToQueue);
             else
-                _logger.Information(_msgMessageResponseToBuffer);
+                _logger.Information(_msgMessageResponseToQueue);
 
-            var x = (ITargetBlock<ReceiveSendContext>)_blockingBuffer;
-            x.Post(receiveSendContext);
+            // Test simple manual reset event.
+            _sendQueue.Enqueue(receiveSendContext);
+            _sendEvend.Set();
+
+            //var x = (ITargetBlock<ReceiveSendContext>)_blockingBuffer;
+            //x.Post(receiveSendContext);
         }
 
         private void CloseOnUnknownMessage()
@@ -389,26 +413,55 @@ namespace JsonServerKit.AppServer
             _logger.Information(_msgStartSending);
             // Sending is done by one consumer, so use ISourcBlock.
             // In case of multiple consumers IReceivableSourceBlock with TryReceive should be used.
+            /*
             var source = (ISourceBlock<ReceiveSendContext>)_blockingBuffer;
             while (source.OutputAvailableAsync().Result)
             {
                 var receiveSendContext = await source.ReceiveAsync();
-
                 var messageBytes = Encoding.UTF8.GetBytes(new StringBuilder().Append(receiveSendContext.OutputMessage).Append(_endOfMessage).ToString());
                 _sslStream.Write(messageBytes);
                 _sslStream.Flush();
 
                 if (receiveSendContext.Context != null)
                 {
-                    _logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, receiveSendContext.Context.MessageId, _msgResponseData, receiveSendContext.OutputMessage);
+                    //_logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, receiveSendContext.Context.MessageId, _msgResponseData, receiveSendContext.OutputMessage);
                     _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, receiveSendContext.Context.MessageId, _msgMessageResponseSent);
                 }
                 else
                 {
-                    _logger.Information("{0} {1}", _msgResponseData, receiveSendContext.OutputMessage);
+                    //_logger.Information("{0} {1}", _msgResponseData, receiveSendContext.OutputMessage);
+                    _logger.Information(_msgMessageResponseSent);
+                }
+            }*/
+
+            ReceiveSendContext receiveSendContext;
+            while (true)
+            {
+                if (!_sendQueue.TryDequeue(out receiveSendContext))
+                {
+                    _sendEvend.WaitOne();
+                    _sendEvend.Reset();
+                    continue;
+                }
+
+                var messageBytes = Encoding.UTF8.GetBytes(new StringBuilder().Append(receiveSendContext.OutputMessage)
+                    .Append(_endOfMessage).ToString());
+                _sslStream.Write(messageBytes);
+                _sslStream.Flush();
+
+                if (receiveSendContext.Context != null)
+                {
+                    //_logger.Information(Messages.TemplateMessageWithIdAndTextThreePlacehodlers, receiveSendContext.Context.MessageId, _msgResponseData, receiveSendContext.OutputMessage);
+                    _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers,
+                        receiveSendContext.Context.MessageId, _msgMessageResponseSent);
+                }
+                else
+                {
+                    //_logger.Information("{0} {1}", _msgResponseData, receiveSendContext.OutputMessage);
                     _logger.Information(_msgMessageResponseSent);
                 }
             }
+ 
         }
 
         #endregion
