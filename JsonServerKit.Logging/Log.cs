@@ -2,6 +2,7 @@
 using Serilog;
 using Serilog.Core;
 using Serilog.Formatting.Json;
+// ReSharper disable UnusedMember.Local
 
 namespace JsonServerKit.Logging
 {
@@ -11,8 +12,8 @@ namespace JsonServerKit.Logging
 
         public class LogConfig : ILogConfig
         {
-            public string PathLogFileJsonFormated { get; set; }
-            public string PathLogFileTextFormated { get; set; }
+            public string PathLogFileJsonFormated { get; set; } = string.Empty;
+            public string PathLogFileTextFormated { get; set; } = string.Empty;
         }
 
         #endregion

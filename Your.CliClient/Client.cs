@@ -41,8 +41,8 @@ namespace Your.CliClient
             // Logger
             // Logging erstellen.
             var pId = Process.GetCurrentProcess().Id;
-            logConfig.PathLogFileJsonFormated += $".Client.txt";//{pId}.{DateTime.Now:yyyy.MM.dd}.txt
-            logConfig.PathLogFileTextFormated += $".Client.txt";
+            logConfig.PathLogFileJsonFormated += $".{pId}.Client.txt";//{pId}.{DateTime.Now:yyyy.MM.dd}.txt
+            logConfig.PathLogFileTextFormated += $".{pId}.Client.txt";
             Serilog.Log.Logger = new Log(configuration, logConfig).GetLogger();
 
             var tcpServerConfig = new TcpServer.TcpServerConfig();
@@ -54,8 +54,7 @@ namespace Your.CliClient
                 // Create a TCP/IP client socket.
                 // machineName is the host running the server application.
                 var tcpClient = new TcpClient(serverName, tcpServerConfig.Port);
-                var serversClient = new Client(tcpClient, tcpServerConfig.CertificateThumbprint, serverName,
-                    Serilog.Log.Logger);
+                var serversClient = new Client(tcpClient, tcpServerConfig.CertificateThumbprint, serverName, Serilog.Log.Logger);
                 clients.Add(serversClient);
             }
 
@@ -152,7 +151,7 @@ namespace Your.CliClient
                         messageTrackingSend.Add(payload.Context.MessageId, payload);
                         SendPayload(payload);
                         _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, payload.Context.MessageId, _msgMessageSent);
-                        // Wait some milliseconds (play with 1ms - 10ms) to keep some real world context.
+                        // Wait some milliseconds (play with 1ms - 100ms) to keep some real world context.
                         Thread.Sleep(50);
                     }
 
