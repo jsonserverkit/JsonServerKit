@@ -10,12 +10,14 @@
     <None Remove="Mappings\Account.hbm.xml" />
     <None Remove="Mappings\Order.hbm.xml" />
     <None Remove="Mappings\Product.hbm.xml" />
+    <None Remove="Mappings\Statistic.hbm.xml" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Mappings\Account.hbm.xml" />
     <EmbeddedResource Include="Mappings\Order.hbm.xml" />
     <EmbeddedResource Include="Mappings\Product.hbm.xml" />
+    <EmbeddedResource Include="Mappings\Statistic.hbm.xml" />
   </ItemGroup>
 
   <ItemGroup>

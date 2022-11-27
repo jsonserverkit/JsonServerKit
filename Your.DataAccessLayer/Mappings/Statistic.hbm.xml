@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<hibernate-mapping xmlns="urn:nhibernate-mapping-2.2" assembly="Your.Domain" namespace="Your.Domain.BusinessObjects">
+
+	<!--Statistic class mapping-->
+	<class name="Statistic" table="tabStatistic">
+		<id name="Id" column="lngId" type="Int64">
+			<generator class="identity"/>
+		</id>
+		<property name="MessageId" column="lngMessageId" type="Int64" length="32" not-null="true" />
+		<property name="TimeInMsMessageSent" column="timeInMsMessageSent" type="Double" not-null="false" />
+		<property name="TimeInMsMessageReceived" column="timeInMsMessageReceived" type="Double" not-null="false" />
+		<property name="TimeDiff" column="timeDiff" type="Double" not-null="false" />
+		<property name="MessageType" column="strMessageType" type="AnsiString" not-null="false" />
+	</class>
+
+</hibernate-mapping>
