@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Mappings\Account.hbm.xml" />
+    <None Remove="Mappings\Order.hbm.xml" />
+    <None Remove="Mappings\Product.hbm.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Mappings\Account.hbm.xml" />
+    <EmbeddedResource Include="Mappings\Order.hbm.xml" />
+    <EmbeddedResource Include="Mappings\Product.hbm.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NHibernate" Version="5.4.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JsonServerKit.DataAccess\JsonServerKit.DataAccess.csproj" />
+    <ProjectReference Include="..\Your.Domain\Your.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

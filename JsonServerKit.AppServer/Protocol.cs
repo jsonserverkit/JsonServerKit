@@ -1,5 +1,4 @@
 ﻿using System.Net.Security;
-using System.Runtime.CompilerServices;
 using System.Text;
 using JsonServerKit.AppServer.Interfaces;
 using Serilog;

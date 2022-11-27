@@ -1,5 +1,4 @@
 ﻿using JsonServerKit.AppServer.Data;
-using JsonServerKit.AppServer.LogTemplate;
 using JsonServerKit.AppServer.Operations;
 using Serilog;
 using Your.Domain.BusinessObjects;
