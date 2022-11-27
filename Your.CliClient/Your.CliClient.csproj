@@ -26,6 +26,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Your.BusinessLogic\Your.BusinessLogic.csproj" />
+    <ProjectReference Include="..\Your.DataAccessLayer\Your.DataAccessLayer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="hibernate.cfg.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
