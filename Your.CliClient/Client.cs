@@ -7,9 +7,12 @@ using System.Text;
 using JsonServerKit.AppServer;
 using JsonServerKit.AppServer.Data;
 using JsonServerKit.AppServer.LogTemplate;
+using JsonServerKit.DataAccess;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Serilog;
+using Your.DataAccessLayer.Repositories;
+using Your.Domain.BusinessObjects;
 using Log = JsonServerKit.Logging.Log;
 
 namespace Your.CliClient
@@ -136,8 +139,11 @@ namespace Your.CliClient
                 return;
             }
 
-            var messageTrackingSend = new Dictionary<long, Payload>();
-            var messageTrackingReceive = new Dictionary<long, PayloadInfo>();
+            var messageTrackingSend = new Dictionary<long, PayloadStatistic>();
+            var messageTrackingReceive = new Dictionary<long, PayloadStatistic>();
+            // Stopwatch (Statistic)
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
 
             var cancellationSource = new CancellationTokenSource();
             // Send data.
@@ -148,8 +154,11 @@ namespace Your.CliClient
 
                     foreach (var payload in payloads)
                     {
-                        messageTrackingSend.Add(payload.Context.MessageId, payload);
+                        var payloadStatistic = new PayloadStatistic { Payload = payload, MessageType = payload.Message.GetType().ToString() };
+                        messageTrackingSend.Add(payload.Context.MessageId, payloadStatistic);
                         SendPayload(payload);
+                        // Statistic
+                        payloadStatistic.TimeInMsMessageSent = stopWatch.ElapsedMilliseconds;
                         _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers, payload.Context.MessageId, _msgMessageSent);
                         // Wait some milliseconds (play with 1ms - 100ms) to keep some real world context.
                         Thread.Sleep(50);
@@ -182,6 +191,8 @@ namespace Your.CliClient
                         if (serverMessages.Length == 0)
                             return receivefinished = true;
 
+                        var payloadStatistic = new PayloadStatistic { TimeInMsMessageReceived = stopWatch.ElapsedMilliseconds };
+
                         foreach (var message in serverMessages)
                         {
                             try
@@ -192,7 +203,7 @@ namespace Your.CliClient
                                 {
                                     _logger.Information(Messages.TemplateMessageWithIdAndTextTwoPlacehodlers,
                                         payloadInfo.Context.MessageId, _msgMessageReceived);
-                                    messageTrackingReceive.Add(payloadInfo.Context.MessageId, payloadInfo);
+                                    messageTrackingReceive.Add(payloadInfo.Context.MessageId, payloadStatistic);
 
                                     if (payloads.Length == messageTrackingReceive.Count)
                                         return true;
@@ -237,7 +248,6 @@ namespace Your.CliClient
                         break;
                     }
 
-
                     // Or we finish if receiving task fails.
                     if (receivefailed)
                         break;
@@ -271,6 +281,35 @@ namespace Your.CliClient
                 // Close the client connection.
                 _tcpClient.Client.Close();
                 _tcpClient.Close();
+            }
+
+            // Statistics 
+            DumpStatistics(messageTrackingSend, messageTrackingReceive);
+        }
+
+        private void DumpStatistics(Dictionary<long, PayloadStatistic> messageTrackingSend, Dictionary<long, PayloadStatistic> messageTrackingReceive)
+        {
+            try
+            {
+                // Statistics
+                var statisticItemList = messageTrackingSend.Join(messageTrackingReceive, x => x.Key, y => y.Key,
+                    (x, y) => new Statistic
+                    {
+                        MessageId = x.Key,
+                        MessageType = x.Value.MessageType,
+                        TimeInMsMessageSent = x.Value.TimeInMsMessageSent,
+                        TimeInMsMessageReceived = y.Value.TimeInMsMessageReceived,
+                        TimeDiff = y.Value.TimeInMsMessageReceived - x.Value.TimeInMsMessageSent
+                    }).ToList();
+
+                IRepository<Statistic> repository = new StatisticRepository();
+
+                foreach (var statistic in statisticItemList)
+                    repository.Create(statistic);
+            }
+            catch (Exception e)
+            {
+                _logger.Error("Exception: {0}, on message:{1}", e.Message);
             }
         }
 
