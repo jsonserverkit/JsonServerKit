@@ -13,7 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\Your.ServerConsoleRuntime\appsettings.json" Link="appsettings.json">
+    <Content Include="..\Your.CliClient\clientsettings.json" Link="clientsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\Your.ServerConsoleRuntime\serversettings.json" Link="serversettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

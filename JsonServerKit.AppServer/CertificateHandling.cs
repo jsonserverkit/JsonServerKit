@@ -17,9 +17,16 @@ namespace JsonServerKit.AppServer
         public static X509Certificate2 GetCertificateFromStore(string thumbprint, StoreLocation storeLocation)
         {
             var store = new X509Store(storeLocation);
-            store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
-            // Assuming dependency on the certificate: If the desired certificate is not found, we crash with the First's exception.
-            return store.Certificates.First(c => c.Thumbprint.Equals(thumbprint));
+            try
+            {
+                store.Open(OpenFlags.ReadOnly | OpenFlags.OpenExistingOnly);
+                // Assuming dependency on the certificate: If the desired certificate is not found, we crash with the exception thrown by First.
+                return store.Certificates.First(c => c.Thumbprint.Equals(thumbprint));
+            }
+            finally
+            {
+                store.Close();
+            }
         }
 
         public static X509Certificate2 GetCertificateFromFile(string certificatePath, string certificatePassword)

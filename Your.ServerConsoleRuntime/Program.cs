@@ -21,7 +21,7 @@ startup.ConfigureAppConfiguration(new List<Action<HostBuilderContext, IConfigura
     {
         config
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json");
+            .AddJsonFile("serversettings.json");
     }
 });
 
