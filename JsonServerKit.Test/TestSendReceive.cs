@@ -136,7 +136,7 @@ namespace JsonServerKit.Test
                 {
                     config
                         .SetBasePath(Directory.GetCurrentDirectory())
-                        .AddJsonFile("appsettings.json");
+                        .AddJsonFile("serversettings.json");
                 }
             });
 

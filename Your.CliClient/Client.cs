@@ -28,14 +28,11 @@ namespace Your.CliClient
 
         public static void Startup(int parallelClientsCount, Func<Payload[]> createPayload)
         {
-            var serverName = "localhost";
-
             // Load appsettings file.
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
+                .AddJsonFile("clientsettings.json")
                 .Build();
-
 
             var logConfig = new Log.LogConfig();
             var logConfigSection = configuration.GetSection("LogConfig");
@@ -48,17 +45,17 @@ namespace Your.CliClient
             logConfig.PathLogFileTextFormated += $".{pId}.Client.txt";
             Serilog.Log.Logger = new Log(configuration, logConfig).GetLogger();
 
-            var tcpServerConfig = new TcpServer.TcpServerConfig();
-            var tcpServerConfigSection = configuration.GetSection("TcpServerConfig");
-            tcpServerConfigSection.Bind(tcpServerConfig);
+            var clientConfig = new ClientConfiguration();
+            var clientConfigSection = configuration.GetSection("ClientConfiguration");
+            clientConfigSection.Bind(clientConfig);
             var clients = new List<Client>();
-            foreach (var i in Enumerable.Range(1, parallelClientsCount))
+            foreach (var _ in Enumerable.Range(1, parallelClientsCount))
             {
                 // Create a TCP/IP client socket.
                 // machineName is the host running the server application.
-                var tcpClient = new TcpClient(serverName, tcpServerConfig.Port);
-                var serversClient = new Client(tcpClient, tcpServerConfig.CertificateThumbprint, serverName, Serilog.Log.Logger);
-                clients.Add(serversClient);
+                var tcpClient = new TcpClient(clientConfig.Servername, clientConfig.Port);
+                var clientWorker = new Client(tcpClient, clientConfig.CertificateThumbprint, clientConfig.Servername, Serilog.Log.Logger);
+                clients.Add(clientWorker);
             }
 
             var taskList = new List<Task>();
@@ -91,10 +88,14 @@ namespace Your.CliClient
             NullValueHandling = NullValueHandling.Ignore
         };
         
+        // ReSharper disable once InconsistentNaming
         private TcpClient _tcpClient { get; set; }
         private readonly SslStream _sslStream;
+        // ReSharper disable once InconsistentNaming
         private string _certThumbprint { get; set; }
+        // ReSharper disable once InconsistentNaming
         private string _serverName { get; set; }
+        // ReSharper disable once InconsistentNaming
         private ILogger _logger { get; set; }
         private Protocol _protocol;
 
@@ -133,7 +134,7 @@ namespace Your.CliClient
                 var clientCert = CertificateHandling.GetCertificateFromStore(_certThumbprint, StoreLocation.CurrentUser);
                 _sslStream.AuthenticateAsClient(_serverName, new X509Certificate2Collection(clientCert), SslProtocols.Tls13, false);
             }
-            catch (AuthenticationException e)
+            catch (AuthenticationException)
             {
                 _tcpClient.Close();
                 return;

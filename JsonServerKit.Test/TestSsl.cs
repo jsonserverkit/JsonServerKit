@@ -31,15 +31,19 @@ namespace JsonServerKit.Test
 
         #region Test methods
 
+        // Enctryption/decryption
+        // https://stackoverflow.com/questions/41594683/encrypt-decrypt-in-c-sharp-using-certificate
+        // https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509certificate2?view=netcore-3.1
+        // https://learn.microsoft.com/en-us/dotnet/standard/security/walkthrough-creating-a-cryptographic-application
         [TestMethod]
         public void TestServerCertificate()
         {
-            var thumbprint = "3070B82C7AE269684EF4C18537DDC0C7E6FDD88A";
+            var thumbprint = "5C3C8FA564BCB1A6C8884F08D60A19BE6A0AB3BC";
 
             var store = StoreLocation.LocalMachine;
             try
             {
-                var serverCertificate = CertificateHandling.GetCertificateFromStore("3070B82C7AE269684EF4C18537DDC0C7E6FDD88A", store);
+                var serverCertificate = CertificateHandling.GetCertificateFromStore("5C3C8FA564BCB1A6C8884F08D60A19BE6A0AB3BC", store);
                 Assert.IsTrue(serverCertificate.Thumbprint == thumbprint);
             }
             catch (Exception e)
@@ -64,7 +68,7 @@ namespace JsonServerKit.Test
                 var sslStream = new SslStream(client.GetStream(), false);
                 Console.WriteLine("Server> authenticate");
 
-                var serverCertificate = CertificateHandling.GetCertificateFromStore("3070B82C7AE269684EF4C18537DDC0C7E6FDD88A", StoreLocation.LocalMachine);
+                var serverCertificate = CertificateHandling.GetCertificateFromStore("5C3C8FA564BCB1A6C8884F08D60A19BE6A0AB3BC", StoreLocation.LocalMachine);
                 sslStream.BeginAuthenticateAsServer(serverCertificate, async (ar2) =>
                 {
                     sslStream.EndAuthenticateAsServer(ar2);
@@ -92,7 +96,7 @@ namespace JsonServerKit.Test
                 var sslStream = new SslStream(tcp.GetStream());
                 Console.WriteLine("Client> authenticate");
 
-                sslStream.BeginAuthenticateAsClient("localhost", async (ar2) =>
+                sslStream.BeginAuthenticateAsClient("WS777", async (ar2) =>
                 {
                     sslStream.EndAuthenticateAsClient(ar2);
 
@@ -116,4 +120,4 @@ namespace JsonServerKit.Test
 
         #endregion
     }
-    }
+}

@@ -16,7 +16,7 @@
     "Port": 5050,
     "CertificatePath": ".\\.\\.\\localhostClientServer.pfx",
     "CertificatePassword": "CertFileHasBeenAddedToTheStores_UseViaFileNotRecommended",
-    "CertificateThumbprint": "3070B82C7AE269684EF4C18537DDC0C7E6FDD88A", // Used to lookup for the certificate in machine/user store.
+    "CertificateThumbprint": "5C3C8FA564BCB1A6C8884F08D60A19BE6A0AB3BC", // Used to lookup for the certificate in machine/user store.
     "ReceiveTimeout": 0, // 0 Means infinite, 0 < Means time in milliseconds.
     "SendTimeout": 0, // 0 Means infinite, 0 < Means time in milliseconds.
     "RequireClientAuthentication": true,
